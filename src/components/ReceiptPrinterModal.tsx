@@ -28,7 +28,6 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   const copyLabels = [
     'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
-    'LIÊN 3: GIAO NHẬN / BẾP',
   ];
 
   return (
