@@ -1,0 +1,6 @@
+{
+  "name": "CHA CHI BAP - Hệ Thống Quản Lý Bán Hàng",
+  "description": "Hệ thống POS chuyên nghiệp dành cho Nhà hàng & Quán Cà phê: Đặt món nhanh, Sơ đồ bàn, In hóa đơn ESC/POS, Màn hình Bếp KDS và Báo cáo Doanh thu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
