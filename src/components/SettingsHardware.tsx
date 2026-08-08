@@ -237,7 +237,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                       onChange={() => setFormData({ ...formData, printerType: 'usb' })}
                       className="w-4 h-4 text-[#5A5A40] focus:ring-[#5A5A40]"
                     />
-                    <span>USB (Kết nối cổng USB trực tiếp / Rongta RP335UL / Sunmi D2)</span>
+                    <span>USB (Trực tiếp cổng USB - Không cần cài Driver trên máy POS Sunmi D2)</span>
                   </label>
 
                   <label className="flex items-center gap-2 cursor-pointer font-semibold text-[#1A1A1A]">
@@ -259,7 +259,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                   <div className="flex items-center gap-3">
                     <Cpu className="w-5 h-5 text-[#5A5A40]" />
                     <div>
-                      <span className="font-bold text-[#1A1A1A] block">Kết Nối Cổng USB Rongta RP335UL & Sunmi D2:</span>
+                      <span className="font-bold text-[#1A1A1A] block">Kết Nối Cổng USB Trực Tiếp (Không Cần Cài Driver):</span>
                       <span className="text-xs font-semibold text-emerald-700">
                         {usbDeviceName ? `✔ ${usbDeviceName}` : 'Chưa ghép nối máy in USB (Tự động nhận dạng khi cắm dây)'}
                       </span>
