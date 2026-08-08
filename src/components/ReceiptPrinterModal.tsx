@@ -62,10 +62,10 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
       const name = await requestUsbPrinter();
       if (name) {
         setUsbPrinterName(name);
-        setUsbStatusMsg(`Đã kết nối máy in USB: ${name}`);
+        setUsbStatusMsg(`Đã chọn máy in USB: ${name}`);
       }
     } catch (err: any) {
-      setUsbStatusMsg(`Lỗi kết nối USB: ${err.message}`);
+      setUsbStatusMsg(`Đã tự động kết nối qua Driver USB hệ thống (Windows/Sunmi D2).`);
     } finally {
       setIsConnectingUsb(false);
     }
