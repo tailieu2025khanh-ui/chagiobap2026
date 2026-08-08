@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Order, StoreConfig } from '../types/pos';
 import { Printer, X, CheckCircle2, QrCode, Cpu, AlertCircle, RefreshCw } from 'lucide-react';
 import {
@@ -7,6 +7,7 @@ import {
   requestUsbPrinter,
   getConnectedUsbPrinterName,
   printOrderUsb,
+  initUsbAutoDetect,
 } from '../services/usbPrinterService';
 
 interface ReceiptPrinterModalProps {
@@ -26,34 +27,31 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   const [isConnectingUsb, setIsConnectingUsb] = useState(false);
   const [usbStatusMsg, setUsbStatusMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (isOpen && order) {
-      checkUsbStatus();
-      if (storeConfig.autoPrintReceipt !== false) {
-        const timer = setTimeout(() => {
-          handlePrintUsbOrBrowser();
-        }, 200);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [isOpen, order]);
+  const printCopies = storeConfig.printCopies === 1 ? 1 : 2;
 
-  const checkUsbStatus = async () => {
+  const checkUsbStatus = useCallback(async () => {
     const name = await getConnectedUsbPrinterName();
     setUsbPrinterName(name);
-  };
+  }, []);
 
-  if (!isOpen || !order) return null;
+  const handlePrintUsbOrBrowser = useCallback(async () => {
+    if (!order) return;
+    setUsbStatusMsg(null);
+    try {
+      const isUsbSuccess = await printOrderUsb(order, storeConfig, printCopies);
+      if (isUsbSuccess) {
+        setUsbStatusMsg(`Đã in thành công ${printCopies} bản qua cổng USB Rongta RP335UL / Sunmi D2!`);
+        setTimeout(() => onClose(), 1500);
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Lỗi in USB trực tiếp, chuyển sang in qua trình duyệt:', err);
+      setUsbStatusMsg('Máy in USB chưa phản hồi, chuyển sang hộp thoại in hệ thống.');
+    }
 
-  const is58mm = storeConfig.paperSize === '58mm';
-  // Strictly enforce 2 print copies maximum for Sunmi D2 POS per user requirement
-  const printCopies = storeConfig.printCopies === 1 ? 1 : 2;
-  const qrUrl = `https://img.vietqr.io/image/${storeConfig.bankName}-${storeConfig.bankAccount}-${storeConfig.qrTemplate}.png?amount=${order.grandTotal}&addInfo=${encodeURIComponent('Thanh toan ' + order.id)}&accountName=${encodeURIComponent(storeConfig.accountHolder)}`;
-
-  const copyLabels = [
-    'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
-    'LIÊN 2: LƯU TẠI CỬA HÀNG',
-  ];
+    // Fallback: system print
+    window.print();
+  }, [order, storeConfig, printCopies, onClose]);
 
   const handleConnectUsb = async () => {
     setIsConnectingUsb(true);
@@ -71,23 +69,34 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
     }
   };
 
-  const handlePrintUsbOrBrowser = async () => {
-    setUsbStatusMsg(null);
-    try {
-      const isUsbSuccess = await printOrderUsb(order, storeConfig, printCopies);
-      if (isUsbSuccess) {
-        setUsbStatusMsg(`Đã in thành công ${printCopies} bản qua cổng USB/Sunmi D2!`);
-        setTimeout(() => onClose(), 1500);
-        return;
+  useEffect(() => {
+    initUsbAutoDetect((name) => {
+      setUsbPrinterName(name);
+      if (name) {
+        setUsbStatusMsg(`Tự động nhận diện máy in USB Plug & Play: ${name}`);
       }
-    } catch (err: any) {
-      console.warn('Lỗi in USB trực tiếp, chuyển sang in qua trình duyệt:', err);
-      setUsbStatusMsg('Máy in USB chưa phản hồi, chuyển sang hộp thoại in hệ thống.');
-    }
+    });
 
-    // Fallback: system print
-    window.print();
-  };
+    if (isOpen && order) {
+      checkUsbStatus();
+      if (storeConfig.autoPrintReceipt !== false) {
+        const timer = setTimeout(() => {
+          handlePrintUsbOrBrowser();
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isOpen, order, checkUsbStatus, handlePrintUsbOrBrowser, storeConfig.autoPrintReceipt]);
+
+  if (!isOpen || !order) return null;
+
+  const is58mm = storeConfig.paperSize === '58mm';
+  const qrUrl = `https://img.vietqr.io/image/${storeConfig.bankName}-${storeConfig.bankAccount}-${storeConfig.qrTemplate}.png?amount=${order.grandTotal}&addInfo=${encodeURIComponent('Thanh toan ' + order.id)}&accountName=${encodeURIComponent(storeConfig.accountHolder)}`;
+
+  const copyLabels = [
+    'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
+    'LIÊN 2: LƯU TẠI CỬA HÀNG',
+  ];
 
   return (
     <div id="printable-receipt-wrapper" className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
@@ -97,7 +106,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-[#D6D6C2]" />
             <div>
-              <h3 className="font-bold text-sm text-white">In Hóa Đơn POS Sunmi D2 (Khổ {storeConfig.paperSize})</h3>
+              <h3 className="font-bold text-sm text-white">In Hóa Đơn Rongta RP335UL / Sunmi D2 (Khổ {storeConfig.paperSize})</h3>
               <p className="text-[11px] text-[#D6D6C2] font-medium">
                 Cấu hình: <span className="font-bold text-amber-300">{printCopies} Bill / Lần In</span>
               </p>
@@ -142,7 +151,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         </div>
 
         <div className="no-print bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-medium text-blue-900 leading-tight">
-          💡 <strong>Cách đổi sang Máy in JP / XP / Sunmi:</strong> Trong bảng in Chrome (Destination) ➔ Chọn <strong>See more...</strong> ➔ Chọn máy in <strong>JP</strong> của bạn. Trình duyệt sẽ nhớ máy in JP cho tất cả lần in sau!
+          💡 <strong>Cách đổi máy in Rongta RP335UL / JP / XP:</strong> Trong bảng in Chrome (Destination) ➔ Chọn <strong>See more...</strong> ➔ Chọn máy in của bạn. Trình duyệt sẽ tự nhớ cho tất cả lần in sau!
         </div>
 
         {usbStatusMsg && (
@@ -222,77 +231,82 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                   <tbody className="divide-y divide-[#E0E0D6]">
                     {order.items.map((item, idx) => (
                       <tr key={idx} className="align-top">
-                        <td className="py-1.5 pr-1">
-                          <div className="font-bold leading-tight">{item.menuItem.name}</div>
-                          {item.selectedModifiers.map((m, mIdx) => (
-                            <div key={mIdx} className="text-[10px] text-[#808070] pl-1">
-                              + {m.optionName} {m.price > 0 && `(+${m.price / 1000}k)`}
+                        <td className="py-1 pr-1 font-medium">
+                          {item.menuItem?.name || 'Món ăn'}
+                          {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                            <div className="text-[10px] text-[#808070] pl-1 font-normal">
+                              {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
                             </div>
-                          ))}
+                          )}
                           {item.itemNote && (
-                            <div className="text-[10px] text-[#5A5A40] italic pl-1">
+                            <div className="text-[10px] text-amber-700 italic pl-1">
                               * {item.itemNote}
                             </div>
                           )}
                         </td>
-                        <td className="py-1.5 text-center font-bold">{item.quantity}</td>
-                        <td className="py-1.5 text-right">{item.unitPrice.toLocaleString('vi-VN')}</td>
-                        <td className="py-1.5 text-right font-bold">{item.totalPrice.toLocaleString('vi-VN')}</td>
+                        <td className="py-1 px-1 text-center font-bold">{item.quantity}</td>
+                        <td className="py-1 px-1 text-right text-[#808070]">
+                          {item.unitPrice.toLocaleString('vi-VN')}
+                        </td>
+                        <td className="py-1 pl-1 text-right font-bold">
+                          {item.totalPrice.toLocaleString('vi-VN')}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
 
-                {/* Calculation Totals */}
-                <div className="space-y-1 text-[11px] mb-4 border-b border-dashed border-[#808070] pb-3">
-                  <div className="flex justify-between">
+                {/* Totals Summary */}
+                <div className="text-xs space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
+                  <div className="flex justify-between text-[#808070]">
                     <span>Tạm tính:</span>
                     <span>{order.subtotal.toLocaleString('vi-VN')} đ</span>
                   </div>
+
                   {order.discountPercent > 0 && (
-                    <div className="flex justify-between text-emerald-800 font-bold">
+                    <div className="flex justify-between text-emerald-700 font-medium text-[11px]">
                       <span>Giảm giá ({order.discountPercent}%):</span>
                       <span>-{order.discountAmount.toLocaleString('vi-VN')} đ</span>
                     </div>
                   )}
+
                   {order.vatPercent > 0 && (
                     <div className="flex justify-between text-[#808070]">
                       <span>Thuế VAT ({order.vatPercent}%):</span>
                       <span>+{order.vatAmount.toLocaleString('vi-VN')} đ</span>
                     </div>
                   )}
-                  <div className="flex justify-between font-extrabold text-sm pt-1 border-t border-[#1A1A1A]">
+
+                  <div className="flex justify-between text-sm font-bold pt-1 text-[#1A1A1A]">
                     <span>TỔNG CỘNG:</span>
-                    <span>{order.grandTotal.toLocaleString('vi-VN')} đ</span>
+                    <span className="text-base">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
                   </div>
 
-                  {/* Payment Details */}
-                  <div className="pt-2 text-[10px] space-y-0.5 text-[#808070]">
-                    <div className="flex justify-between">
-                      <span>Hình thức thanh toán:</span>
-                      <span className="font-bold uppercase text-[#1A1A1A]">
-                        {order.paymentMethod === 'cash'
-                          ? 'Tiền Mặt'
-                          : order.paymentMethod === 'transfer'
-                          ? 'Chuyển Khoản VietQR'
-                          : order.paymentMethod === 'card'
-                          ? 'Thẻ ATM/POS'
-                          : 'Ví Điện Tử'}
-                      </span>
-                    </div>
-                    {order.paymentMethod === 'cash' && order.paidAmount && (
-                      <>
-                        <div className="flex justify-between">
-                          <span>Tiền khách đưa:</span>
-                          <span>{order.paidAmount.toLocaleString('vi-VN')} đ</span>
-                        </div>
-                        <div className="flex justify-between font-bold text-[#1A1A1A]">
-                          <span>Tiền trả lại:</span>
-                          <span>{(order.changeAmount || 0).toLocaleString('vi-VN')} đ</span>
-                        </div>
-                      </>
-                    )}
+                  <div className="flex justify-between text-[11px] text-[#808070] pt-1">
+                    <span>Hình thức thanh toán:</span>
+                    <span className="font-bold text-[#1A1A1A]">
+                      {order.paymentMethod === 'cash'
+                        ? 'Tiền mặt'
+                        : order.paymentMethod === 'transfer'
+                        ? 'Chuyển khoản'
+                        : order.paymentMethod === 'card'
+                        ? 'Thẻ POS'
+                        : 'Ví MoMo'}
+                    </span>
                   </div>
+
+                  {order.paymentMethod === 'cash' && order.paidAmount && (
+                    <>
+                      <div className="flex justify-between text-[11px] text-[#808070]">
+                        <span>Tiền khách đưa:</span>
+                        <span>{order.paidAmount.toLocaleString('vi-VN')} đ</span>
+                      </div>
+                      <div className="flex justify-between text-[11px] font-bold text-emerald-800">
+                        <span>Tiền trả lại:</span>
+                        <span>{(order.changeAmount || 0).toLocaleString('vi-VN')} đ</span>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {/* Footer QR / Thank you */}
@@ -304,7 +318,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </div>
                   )}
                   <p className="font-bold text-[11px]">CẢM ƠN VÀ HẸN GẶP LẠI QUÝ KHÁCH!</p>
-                  <p className="text-[9px] text-[#808070]">Phần mềm POS Sunmi D2 - CHA CHI BAP</p>
+                  <p className="text-[9px] text-[#808070]">Rongta RP335UL / POS Sunmi D2 - CHA CHI BAP</p>
                 </div>
               </div>
             ))}
@@ -324,7 +338,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
-            <span>IN TỔNG CỘNG {printCopies} BILL (USB / SUNMI D2)</span>
+            <span>IN TỔNG CỘNG {printCopies} BILL (RONGTA RP335UL / SUNMI D2)</span>
           </button>
         </div>
       </div>
