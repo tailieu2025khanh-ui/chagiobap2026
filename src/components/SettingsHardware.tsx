@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StoreConfig } from '../types/pos';
+import React, { useState, useEffect } from 'react';
+import { StoreConfig, Order } from '../types/pos';
 import {
   Settings,
   Printer,
@@ -13,7 +13,13 @@ import {
   FileSpreadsheet,
   Download,
   Upload,
+  Cpu,
 } from 'lucide-react';
+import {
+  requestUsbPrinter,
+  getConnectedUsbPrinterName,
+  printOrderUsb,
+} from '../services/usbPrinterService';
 
 interface SettingsHardwareProps {
   storeConfig: StoreConfig;
@@ -28,8 +34,17 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
   onResetData,
   onOpenGoogleSheetsModal,
 }) => {
-  const [formData, setFormData] = useState<StoreConfig>({ ...storeConfig });
+  const [formData, setFormData] = useState<StoreConfig>({
+    ...storeConfig,
+    printCopies: storeConfig.printCopies ?? 2,
+  });
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [usbDeviceName, setUsbDeviceName] = useState<string | null>(null);
+  const [isConnectingUsb, setIsConnectingUsb] = useState(false);
+
+  useEffect(() => {
+    getConnectedUsbPrinterName().then((name) => setUsbDeviceName(name));
+  }, []);
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,8 +53,70 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
     setTimeout(() => setSavedSuccess(false), 3000);
   };
 
-  const handleTestPrint = () => {
-    alert(`Đã gửi lệnh in thử nghiệm ESC/POS tới máy in ${formData.printerType.toUpperCase()} (${formData.printerIp}:${formData.printerPort})!`);
+  const handleConnectUsb = async () => {
+    setIsConnectingUsb(true);
+    try {
+      const name = await requestUsbPrinter();
+      if (name) {
+        setUsbDeviceName(name);
+        alert(`Đã kết nối thành công với máy in USB Sunmi D2: ${name}`);
+      }
+    } catch (err: any) {
+      alert(`Lỗi kết nối USB: ${err.message}`);
+    } finally {
+      setIsConnectingUsb(false);
+    }
+  };
+
+  const handleTestPrint = async () => {
+    const dummyOrder: Order = {
+      id: 'TEST-001',
+      orderCode: 'POS-TEST',
+      orderType: 'table',
+      tableName: 'Bàn 01',
+      items: [
+        {
+          cartItemId: 'test_1',
+          menuItem: {
+            id: 'm_test',
+            sku: 'TEST-01',
+            name: 'Cà Phê Muối Test',
+            category: 'nuoc-uong',
+            price: 35000,
+            image: '',
+            isAvailable: true,
+          },
+          quantity: 2,
+          selectedModifiers: [{ groupId: 'g1', groupTitle: 'Mức đường', optionName: '70% Đường', price: 0 }],
+          itemNote: 'In thử nghiệm máy in USB Sunmi D2',
+          unitPrice: 35000,
+          totalPrice: 70000,
+        },
+      ],
+      subtotal: 70000,
+      discountPercent: 0,
+      discountAmount: 0,
+      vatPercent: 0,
+      vatAmount: 0,
+      grandTotal: 70000,
+      paymentMethod: 'cash',
+      paymentStatus: 'paid',
+      kitchenStatus: 'delivered',
+      cashierName: 'Thu Ngân Test',
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      const success = await printOrderUsb(dummyOrder, formData, formData.printCopies || 2);
+      if (success) {
+        alert(`Đã gửi lệnh in thử ${formData.printCopies || 2} bill đến máy in USB Sunmi D2 thành công!`);
+        return;
+      }
+    } catch (err) {
+      console.warn('Lỗi in USB test:', err);
+    }
+
+    alert(`Đã kích hoạt in thử nghiệm (${formData.printCopies || 2} bill) qua trình duyệt system print.`);
     window.print();
   };
 
@@ -51,10 +128,10 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
           <div>
             <h2 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
               <Settings className="w-5 h-5 text-[#5A5A40]" />
-              CẤU HÌNH CỬA HÀNG & KẾT NỐI PHẦN CỨNG (HARDWARE SETUP)
+              CẤU HÌNH CỬA HÀNG & KẾT NỐI PHẦN CỨNG (POS SUNMI D2 HARDWARE SETUP)
             </h2>
             <p className="text-xs text-[#808070] mt-0.5 font-medium">
-              Thiết lập thông tin cửa hàng, tài khoản thanh toán VietQR và cấu hình kết nối máy in bill ESC/POS (LAN/USB).
+              Thiết lập thông tin cửa hàng, tài khoản thanh toán VietQR và cấu hình máy in bill cổng USB cho máy bán hàng Pos Sunmi D2.
             </p>
           </div>
 
@@ -174,7 +251,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
             <div className="flex items-center justify-between border-b border-[#E0E0D6] pb-2">
               <h3 className="font-bold text-sm text-[#1A1A1A] flex items-center gap-2">
                 <Printer className="w-4 h-4 text-[#5A5A40]" />
-                3. CẤU HÌNH MÁY IN BILL NHIỆT (ESC/POS THERMAL PRINTER)
+                3. CẤU HÌNH MÁY IN BILL CỔNG USB & SUNMI D2 (ESC/POS THERMAL PRINTER)
               </h3>
 
               <button
@@ -182,14 +259,14 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                 onClick={handleTestPrint}
                 className="px-3 py-1.5 rounded-xl bg-[#2C2C24] hover:bg-[#3E3E34] text-[#D6D6C2] font-bold text-xs transition-colors flex items-center gap-1.5"
               >
-                <Radio className="w-3.5 h-3.5" />
+                <Radio className="w-3.5 h-3.5 text-emerald-400" />
                 <span>IN THỬ NGHIỆM</span>
               </button>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-bold text-[#1A1A1A] mb-1">Giao Thức Kết Nối:</label>
+                <label className="block font-bold text-[#1A1A1A] mb-1">Giao Thức Kết Nối Máy In:</label>
                 <select
                   value={formData.printerType}
                   onChange={(e) =>
@@ -197,8 +274,9 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                   }
                   className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-bold bg-[#FAF9F6]"
                 >
+                  <option value="usb">Cổng USB / Trực Tiếp Máy POS Sunmi D2 (WebUSB)</option>
+                  <option value="sunmi">Sunmi POS Inner Printer SDK</option>
                   <option value="lan">Mạng LAN (TCP/IP IP Address)</option>
-                  <option value="usb">Cổng USB / Trực Tiếp</option>
                   <option value="bluetooth">Bluetooth Không Dây</option>
                 </select>
               </div>
@@ -212,27 +290,48 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                   }
                   className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-bold bg-[#FAF9F6]"
                 >
-                  <option value="80mm">Khổ K80 (80mm - Phổ biến nhất)</option>
+                  <option value="80mm">Khổ K80 (80mm - Máy In Bill Sunmi D2 / Quầy)</option>
                   <option value="58mm">Khổ K58 (58mm - Máy in cầm tay)</option>
                 </select>
               </div>
 
               <div>
                 <label className="block font-bold text-[#1A1A1A] mb-1">
-                  Số Lượng Bill In Mỗi Lần (Số Bản):
+                  Số Lượng Bill In Mỗi Lần (Yêu Cầu Sunmi D2: 2 Bill):
                 </label>
                 <select
-                  value={formData.printCopies || 1}
+                  value={formData.printCopies ?? 2}
                   onChange={(e) =>
                     setFormData({ ...formData, printCopies: Number(e.target.value) })
                   }
                   className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-bold text-[#1A1A1A] bg-[#FAF9F6]"
                 >
+                  <option value={2}>2 Bill / lần (1 bản Khách - 1 bản Quầy) [Chuẩn Sunmi D2]</option>
                   <option value={1}>1 Bill / lần (Chỉ in 1 bản gửi khách)</option>
-                  <option value={2}>2 Bill / lần (1 bản gửi Khách - 1 bản Lưu quầy)</option>
-                  <option value={3}>3 Bill / lần (1 bản Khách - 1 bản Quầy - 1 bản Giao nhận/Bếp)</option>
+                  <option value={3}>3 Bill / lần (1 bản Khách - 1 bản Quầy - 1 bản Bếp)</option>
                 </select>
               </div>
+
+              {/* USB Device Pairing Action Box */}
+              {(formData.printerType === 'usb' || formData.printerType === 'sunmi') && (
+                <div className="bg-[#FAF9F6] p-3 rounded-xl border border-[#E0E0D6] flex flex-col justify-center space-y-1">
+                  <span className="font-bold text-[#1A1A1A]">Kết Nối Cổng USB Máy In Sunmi D2:</span>
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <span className="text-xs font-semibold text-emerald-800 truncate">
+                      {usbDeviceName ? `✔ ${usbDeviceName}` : 'Chưa ghép nối máy in USB'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleConnectUsb}
+                      disabled={isConnectingUsb}
+                      className="px-3 py-1.5 rounded-lg bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs flex items-center gap-1.5 shrink-0"
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      <span>{isConnectingUsb ? 'Đang dò...' : 'Ghép Nối USB'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {formData.printerType === 'lan' && (
                 <>
@@ -269,7 +368,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                   onChange={(e) => setFormData({ ...formData, autoPrintReceipt: e.target.checked })}
                   className="w-4 h-4 rounded text-[#5A5A40] focus:ring-[#5A5A40]"
                 />
-                <span>Tự động in bill khi bấm thanh toán đơn</span>
+                <span>Tự động in bill khi bấm thanh toán đơn (Tối ưu Sunmi D2)</span>
               </label>
 
               <label className="flex items-center gap-2 cursor-pointer text-[#1A1A1A]">
