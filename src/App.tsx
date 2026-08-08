@@ -74,6 +74,7 @@ export default function App() {
   // Payment & Receipt & Google Sheet & Quiz & API Key Modals
   const [payingOrder, setPayingOrder] = useState<Order | null>(null);
   const [printingOrder, setPrintingOrder] = useState<Order | null>(null);
+  const [lastPrintedOrder, setLastPrintedOrder] = useState<Order | null>(null);
   const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState<boolean>(false);
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
@@ -260,9 +261,12 @@ export default function App() {
     setVatPercent(0);
     setCustomerNote('');
     setPayingOrder(null);
+    setLastPrintedOrder(completedOrder);
 
     // Instant Direct USB Hardware Print - 0 Modals, 0 Dialogs
-    printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
+    setTimeout(() => {
+      printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
+    }, 50);
   };
 
   // Pay directly from Table Manager
@@ -457,9 +461,9 @@ export default function App() {
       )}
 
       {/* ESC/POS Thermal Receipt Printer Modal */}
-      {printingOrder && (
+      {(printingOrder || lastPrintedOrder) && (
         <ReceiptPrinterModal
-          order={printingOrder}
+          order={printingOrder || lastPrintedOrder}
           storeConfig={storeConfig}
           isOpen={!!printingOrder}
           onClose={() => setPrintingOrder(null)}
