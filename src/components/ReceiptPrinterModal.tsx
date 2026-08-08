@@ -46,14 +46,13 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   if (!isOpen || !order) return null;
 
   const is58mm = storeConfig.paperSize === '58mm';
-  // Default to 2 print copies per user specification for Sunmi D2 POS
-  const printCopies = Math.min(3, Math.max(1, storeConfig.printCopies ?? 2));
+  // Strictly enforce 2 print copies maximum for Sunmi D2 POS per user requirement
+  const printCopies = storeConfig.printCopies === 1 ? 1 : 2;
   const qrUrl = `https://img.vietqr.io/image/${storeConfig.bankName}-${storeConfig.bankAccount}-${storeConfig.qrTemplate}.png?amount=${order.grandTotal}&addInfo=${encodeURIComponent('Thanh toan ' + order.id)}&accountName=${encodeURIComponent(storeConfig.accountHolder)}`;
 
   const copyLabels = [
     'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
-    'LIÊN 3: GIAO NHẬN / BẾP',
   ];
 
   const handleConnectUsb = async () => {
