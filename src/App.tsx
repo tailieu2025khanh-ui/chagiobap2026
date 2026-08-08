@@ -285,22 +285,10 @@ export default function App() {
     setCustomerNote('');
     setPayingOrder(null);
 
-    // Auto Print Trigger - In bill tự động tức thì khi bấm thanh toán (Không mở modal xem trước)
+    // Auto Print Trigger - In bill trực tiếp 100% qua cổng USB (LOẠI BỎ hoàn toàn bảng chọn in Chrome)
     setPrintingOrder(completedOrder);
     if (autoPrint) {
-      printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2)
-        .then((printed) => {
-          if (!printed) {
-            setTimeout(() => {
-              window.print();
-            }, 100);
-          }
-        })
-        .catch(() => {
-          setTimeout(() => {
-            window.print();
-          }, 100);
-        });
+      printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
     }
   };
 
