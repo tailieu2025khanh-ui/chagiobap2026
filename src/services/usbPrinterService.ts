@@ -1,4 +1,4 @@
-// USB & Sunmi D2 ESC/POS Thermal Printer Service
+// USB & Sunmi D2 ESC/POS Thermal Printer Service (Rongta, Sunmi, JP, XP, Epson, Canon...)
 
 import { Order, StoreConfig } from '../types/pos';
 
@@ -57,6 +57,7 @@ declare global {
       cutPaper: (callback?: any) => void;
     };
     SunmiPrinter?: any;
+    sunmi?: any;
   }
 }
 
@@ -82,11 +83,11 @@ export const isWebUsbSupported = (): boolean => {
  * Check if running inside Sunmi POS OS native JS Bridge
  */
 export const isSunmiNativePrinter = (): boolean => {
-  return typeof window !== 'undefined' && (!!window.sunmiInnerPrinter || !!window.SunmiPrinter);
+  return typeof window !== 'undefined' && (!!window.sunmiInnerPrinter || !!window.SunmiPrinter || !!(window as any).sunmi);
 };
 
 /**
- * Request user to pick a USB Thermal Printer device
+ * Request user to pick a USB Thermal Printer device (Rongta, Sunmi, JP, XP, Epson...)
  */
 export const requestUsbPrinter = async (): Promise<string | null> => {
   if (!isWebUsbSupported()) {
@@ -96,10 +97,10 @@ export const requestUsbPrinter = async (): Promise<string | null> => {
   const usbApi = (navigator as any).usb;
 
   try {
-    // Request device with empty filters to allow ALL USB printer brands (JP, XP, Xprinter, Epson, Sunmi, Birch, Canon...)
+    // Request device with empty filters to allow ALL USB printer brands (Rongta, JP, XP, Xprinter, Epson, Sunmi, Birch, Canon...)
     const device: USBDevice = await usbApi.requestDevice({ filters: [] });
     await connectToUsbDevice(device);
-    return device.productName || `Máy In USB (${device.vendorId.toString(16)}:${device.productId.toString(16)})`;
+    return device.productName || `Máy In USB Rongta/POS (${device.vendorId.toString(16)}:${device.productId.toString(16)})`;
   } catch (err: any) {
     if (err.name === 'NotFoundError') {
       return null; // User cancelled
@@ -121,7 +122,7 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
       openErr.message?.includes('Access denied') ||
       openErr.message?.includes('already open')
     ) {
-      console.warn('Thiết bị USB đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
+      console.warn('Thiết bị USB Rongta/POS đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
       activeUsbDevice = device;
       activeEndpointNumber = null;
       return;
@@ -174,7 +175,7 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
  */
 export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
   if (activeUsbDevice) {
-    return activeUsbDevice.productName || 'Máy in USB POS';
+    return activeUsbDevice.productName || 'Máy in USB Rongta / POS';
   }
 
   if (isWebUsbSupported()) {
@@ -185,9 +186,9 @@ export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
         const device = paired[0];
         try {
           await connectToUsbDevice(device);
-          return device.productName || 'Máy in USB Sunmi D2';
+          return device.productName || 'Máy in USB Rongta / Sunmi D2';
         } catch {
-          return paired[0].productName || 'Máy in USB Sunmi D2 (Chưa mở kết nối)';
+          return paired[0].productName || 'Máy in USB Rongta / Sunmi D2 (Driver OS)';
         }
       }
     } catch (err) {
@@ -228,7 +229,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
   ];
 
-  // Enforce strictly maximum 2 copies for Sunmi D2 POS
+  // Enforce strictly maximum 2 copies for Sunmi D2 POS / Rongta
   const actualCopies = copiesCount === 1 ? 1 : 2;
 
   for (let copyIdx = 0; copyIdx < actualCopies; copyIdx++) {
@@ -359,7 +360,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addStr('CAM ON VA HEN GAP LAI QUY KHACH!\n');
     addStr('POS Sunmi D2 - CHA CHI BAP F&B\n');
 
-    // Feed lines before cut
+    // Feed lines before cut (Rongta / Sunmi ESC/POS partial cut command)
     addBytes(0x1d, 0x56, 0x42, 0x03); // GS V 66 3 (Partial Cut with paper feed)
     addBytes(0x0a, 0x0a, 0x0a);
   }
@@ -368,7 +369,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
 };
 
 /**
- * Print order via USB printer device or Sunmi JS Bridge
+ * Print order via USB printer device (Rongta / XP / JP), Sunmi JS Bridge, or System Print
  */
 export const printOrderUsb = async (
   order: Order,
@@ -377,56 +378,55 @@ export const printOrderUsb = async (
 ): Promise<boolean> => {
   const safeCopies = copiesCount === 1 ? 1 : 2;
 
-  // 1. Try Sunmi Native JS Bridge first if on Sunmi POS
-  if (isSunmiNativePrinter()) {
-    try {
-      const p = window.sunmiInnerPrinter;
-      if (p) {
-        for (let i = 0; i < safeCopies; i++) {
-          p.setAlignment(1);
-          p.setFontSize(32);
-          p.printText(`${storeConfig.storeName}\n`);
-          p.setFontSize(22);
-          p.printText(`*** LIÊN ${i + 1} ***\n`);
-          p.printText(`Mã HD: ${order.id}\n`);
-          p.printText(`Tổng tiền: ${order.grandTotal.toLocaleString('vi-VN')} đ\n`);
-          p.lineWrap(3);
-          p.cutPaper();
-        }
-        return true;
-      }
-    } catch (err) {
-      console.warn('Lỗi Sunmi Native Printer, fallback sang WebUSB:', err);
-    }
-  }
-
-  // 2. Try WebUSB active device or reconnect paired device
+  // 1. Try WebUSB active device or paired USB printer FIRST (Supports Rongta, XP, JP, Epson plugged into Sunmi D2 or Laptop)
   if (isWebUsbSupported()) {
     const usbApi = (navigator as any).usb;
     if (!activeUsbDevice && usbApi) {
-      const paired: USBDevice[] = await usbApi.getDevices();
-      if (paired.length > 0) {
-        try {
+      try {
+        const paired: USBDevice[] = await usbApi.getDevices();
+        if (paired.length > 0) {
           await connectToUsbDevice(paired[0]);
-        } catch (err) {
-          console.warn('Không kết nối lại được thiết bị USB tự động:', err);
         }
+      } catch (err) {
+        console.warn('Không kết nối lại được thiết bị USB tự động:', err);
       }
     }
 
     if (activeUsbDevice && activeEndpointNumber !== null) {
       try {
-        const buffer = buildEscPosBuffer(order, storeConfig, copiesCount);
+        const buffer = buildEscPosBuffer(order, storeConfig, safeCopies);
         await activeUsbDevice.transferOut(activeEndpointNumber, buffer);
         return true;
       } catch (err: any) {
-        console.error('Lỗi khi gửi dữ liệu ESC/POS qua cổng USB:', err);
-        throw new Error('Lỗi in USB: ' + (err.message || 'Không thể truyền dữ liệu tới máy in'));
+        console.error('Lỗi khi gửi dữ liệu ESC/POS qua cổng USB Rongta:', err);
       }
     }
   }
 
-  // 3. Fallback: window.print()
+  // 2. Try Sunmi Native Inner Printer (if inner printer exists and no active external USB Rongta printer claimed)
+  if (isSunmiNativePrinter()) {
+    try {
+      const p = window.sunmiInnerPrinter || (window as any).SunmiPrinter || (window as any).sunmi;
+      if (p && typeof p.printText === 'function') {
+        for (let i = 0; i < safeCopies; i++) {
+          if (p.setAlignment) p.setAlignment(1);
+          if (p.setFontSize) p.setFontSize(32);
+          if (p.printText) p.printText(`${storeConfig.storeName}\n`);
+          if (p.setFontSize) p.setFontSize(22);
+          if (p.printText) p.printText(`*** LIÊN ${i + 1} ***\n`);
+          if (p.printText) p.printText(`Mã HD: ${order.id}\n`);
+          if (p.printText) p.printText(`Tổng tiền: ${order.grandTotal.toLocaleString('vi-VN')} đ\n`);
+          if (p.lineWrap) p.lineWrap(3);
+          if (p.cutPaper) p.cutPaper();
+        }
+        return true;
+      }
+    } catch (err) {
+      console.warn('Lỗi Sunmi Native Printer, fallback sang System Print:', err);
+    }
+  }
+
+  // 3. Fallback: window.print() (System Print Driver for Rongta / Canon / JP / XP)
   return false;
 };
 
