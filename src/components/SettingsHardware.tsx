@@ -300,7 +300,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                   Số Lượng Bill In Mỗi Lần (Yêu Cầu Sunmi D2: 2 Bill):
                 </label>
                 <select
-                  value={formData.printCopies ?? 2}
+                  value={formData.printCopies === 1 ? 1 : 2}
                   onChange={(e) =>
                     setFormData({ ...formData, printCopies: Number(e.target.value) })
                   }
@@ -308,7 +308,6 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                 >
                   <option value={2}>2 Bill / lần (1 bản Khách - 1 bản Quầy) [Chuẩn Sunmi D2]</option>
                   <option value={1}>1 Bill / lần (Chỉ in 1 bản gửi khách)</option>
-                  <option value={3}>3 Bill / lần (1 bản Khách - 1 bản Quầy - 1 bản Bếp)</option>
                 </select>
               </div>
 
