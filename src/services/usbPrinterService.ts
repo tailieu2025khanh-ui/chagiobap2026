@@ -66,7 +66,7 @@ export interface UsbPrinterDevice {
 }
 
 let activeUsbDevice: USBDevice | null = null;
-let activeEndpointNumber: number | null = null;
+let activeEndpointNumber: number | null = 1;
 let autoDetectInitialized = false;
 
 /**
@@ -128,7 +128,7 @@ export const initUsbAutoDetect = (onDeviceChange?: (deviceName: string | null) =
     console.log('Máy in USB đã ngắt kết nối:', event.device);
     if (event?.device && activeUsbDevice === event.device) {
       activeUsbDevice = null;
-      activeEndpointNumber = null;
+      activeEndpointNumber = 1;
       if (onDeviceChange) onDeviceChange(null);
     }
   });
@@ -167,20 +167,13 @@ export const requestUsbPrinter = async (): Promise<string | null> => {
  * Connect & claim interface for a USB device
  */
 const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
+  activeUsbDevice = device;
+  activeEndpointNumber = 1; // Default Bulk OUT endpoint to 1
+
   try {
     await device.open();
   } catch (openErr: any) {
-    if (
-      openErr.name === 'SecurityError' ||
-      openErr.message?.includes('Access denied') ||
-      openErr.message?.includes('already open')
-    ) {
-      console.warn('Thiết bị USB Rongta RP335UL đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
-      activeUsbDevice = device;
-      activeEndpointNumber = null;
-      return;
-    }
-    throw openErr;
+    console.warn('Cổng USB Rongta RP335UL đã được mở hoặc quản lý bởi OS:', openErr);
   }
 
   if (device.configuration === null) {
@@ -197,7 +190,6 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
 
   for (const iface of device.configuration?.interfaces || []) {
     for (const alt of iface.alternates) {
-      // Class 7 is Printer, or fallback to bulk out endpoint
       const outEp = alt.endpoints.find((ep) => ep.direction === 'out' && ep.type === 'bulk');
       if (outEp) {
         targetInterface = iface;
@@ -208,17 +200,16 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
     if (targetEndpoint) break;
   }
 
-  activeUsbDevice = device;
-  if (targetInterface && targetEndpoint) {
+  if (targetEndpoint) {
+    activeEndpointNumber = targetEndpoint.endpointNumber;
+  }
+
+  if (targetInterface) {
     try {
       await device.claimInterface(targetInterface.interfaceNumber);
-      activeEndpointNumber = targetEndpoint.endpointNumber;
     } catch (claimErr) {
-      console.warn('Cổng USB đã được quản lý bởi Driver hệ thống, sử dụng fallback in hệ thống:', claimErr);
-      activeEndpointNumber = null;
+      console.warn('Cổng USB đã được quản lý bởi Driver hệ thống:', claimErr);
     }
-  } else {
-    activeEndpointNumber = null;
   }
 };
 
@@ -240,7 +231,7 @@ export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
           await connectToUsbDevice(device);
           return formatPrinterName(device);
         } catch {
-          return formatPrinterName(device) + ' (Driver OS)';
+          return formatPrinterName(device) + ' (USB Connected)';
         }
       }
     } catch (err) {
@@ -454,18 +445,33 @@ export const printOrderUsb = async (
       }
     }
 
-    if (activeUsbDevice && activeEndpointNumber !== null) {
+    if (activeUsbDevice) {
+      const ep = activeEndpointNumber || 1;
       try {
+        if (!activeUsbDevice.opened) {
+          await activeUsbDevice.open();
+        }
         const buffer = buildEscPosBuffer(order, storeConfig, safeCopies);
-        await activeUsbDevice.transferOut(activeEndpointNumber, buffer);
+        await activeUsbDevice.transferOut(ep, buffer);
+        console.log('Đã gửi lệnh in ESC/POS thành công qua cổng USB!');
         return true;
       } catch (err: any) {
         console.error('Lỗi khi gửi dữ liệu ESC/POS qua cổng USB Rongta RP335UL:', err);
+        // Fallback try endpoint 1 if different
+        if (ep !== 1) {
+          try {
+            const buffer = buildEscPosBuffer(order, storeConfig, safeCopies);
+            await activeUsbDevice.transferOut(1, buffer);
+            return true;
+          } catch (e2) {
+            console.error('Lỗi thử lại endpoint 1:', e2);
+          }
+        }
       }
     }
   }
 
-  // 2. Try Sunmi Native Inner Printer (if inner printer exists and no active external USB Rongta printer claimed)
+  // 2. Try Sunmi Native Inner Printer (if inner printer exists)
   if (isSunmiNativePrinter()) {
     try {
       const p = window.sunmiInnerPrinter || (window as any).SunmiPrinter || (window as any).sunmi;
@@ -486,6 +492,14 @@ export const printOrderUsb = async (
     } catch (err) {
       console.warn('Lỗi Sunmi Native Printer:', err);
     }
+  }
+
+  // 3. Fallback: OS System Print if WebUSB is claimed by OS Driver (e.g., Windows USB Spooler)
+  try {
+    window.print();
+    return true;
+  } catch (sysErr) {
+    console.warn('Lỗi in hệ thống:', sysErr);
   }
 
   return false;
