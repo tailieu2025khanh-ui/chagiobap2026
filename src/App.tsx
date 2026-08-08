@@ -260,7 +260,6 @@ export default function App() {
     setVatPercent(0);
     setCustomerNote('');
     setPayingOrder(null);
-    setPrintingOrder(completedOrder);
 
     // Instant Direct USB Hardware Print - 0 Modals, 0 Dialogs
     printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
@@ -331,7 +330,6 @@ export default function App() {
     setPayingOrder(null);
 
     // Auto Print Trigger - In bill trực tiếp 100% qua cổng USB (LOẠI BỎ hoàn toàn bảng chọn in Chrome)
-    setPrintingOrder(completedOrder);
     if (autoPrint) {
       printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
     }
