@@ -131,9 +131,28 @@ export const requestUsbPrinter = async (): Promise<string | null> => {
  * Connect & claim interface for a USB device
  */
 const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
-  await device.open();
+  try {
+    await device.open();
+  } catch (openErr: any) {
+    if (
+      openErr.name === 'SecurityError' ||
+      openErr.message?.includes('Access denied') ||
+      openErr.message?.includes('already open')
+    ) {
+      console.warn('Thiết bị USB đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
+      activeUsbDevice = device;
+      activeEndpointNumber = null;
+      return;
+    }
+    throw openErr;
+  }
+
   if (device.configuration === null) {
-    await device.selectConfiguration(1);
+    try {
+      await device.selectConfiguration(1);
+    } catch {
+      // Ignore if OS already configured interface
+    }
   }
 
   // Find interface with OUT endpoint
@@ -153,14 +172,19 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
     if (targetEndpoint) break;
   }
 
-  if (!targetInterface || !targetEndpoint) {
-    throw new Error('Không tìm thấy cổng dữ liệu (Bulk Out Endpoint) trên máy in USB này.');
-  }
-
-  await device.claimInterface(targetInterface.interfaceNumber);
   activeUsbDevice = device;
-  activeInterfaceNumber = targetInterface.interfaceNumber;
-  activeEndpointNumber = targetEndpoint.endpointNumber;
+  if (targetInterface && targetEndpoint) {
+    try {
+      await device.claimInterface(targetInterface.interfaceNumber);
+      activeInterfaceNumber = targetInterface.interfaceNumber;
+      activeEndpointNumber = targetEndpoint.endpointNumber;
+    } catch (claimErr) {
+      console.warn('Cổng USB đã được quản lý bởi Driver hệ thống, sử dụng fallback in hệ thống:', claimErr);
+      activeEndpointNumber = null;
+    }
+  } else {
+    activeEndpointNumber = null;
+  }
 };
 
 /**
