@@ -1,6 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Order, StoreConfig } from '../types/pos';
-import { Printer, X, CheckCircle2, QrCode } from 'lucide-react';
+import { Printer, X, CheckCircle2, QrCode, Cpu, AlertCircle, RefreshCw } from 'lucide-react';
+import {
+  isWebUsbSupported,
+  isSunmiNativePrinter,
+  requestUsbPrinter,
+  getConnectedUsbPrinterName,
+  printOrderUsb,
+} from '../services/usbPrinterService';
 
 interface ReceiptPrinterModalProps {
   order: Order | null;
@@ -15,20 +22,73 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  if (!isOpen || !order) return null;
+  const [usbPrinterName, setUsbPrinterName] = useState<string | null>(null);
+  const [isConnectingUsb, setIsConnectingUsb] = useState(false);
+  const [usbStatusMsg, setUsbStatusMsg] = useState<string | null>(null);
 
-  const handlePrint = () => {
-    window.print();
+  useEffect(() => {
+    if (isOpen && order) {
+      checkUsbStatus();
+      if (storeConfig.autoPrintReceipt !== false) {
+        const timer = setTimeout(() => {
+          handlePrintUsbOrBrowser();
+        }, 200);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isOpen, order]);
+
+  const checkUsbStatus = async () => {
+    const name = await getConnectedUsbPrinterName();
+    setUsbPrinterName(name);
   };
 
+  if (!isOpen || !order) return null;
+
   const is58mm = storeConfig.paperSize === '58mm';
-  const printCopies = Math.min(3, Math.max(1, storeConfig.printCopies || 1));
+  // Default to 2 print copies per user specification for Sunmi D2 POS
+  const printCopies = Math.min(3, Math.max(1, storeConfig.printCopies ?? 2));
   const qrUrl = `https://img.vietqr.io/image/${storeConfig.bankName}-${storeConfig.bankAccount}-${storeConfig.qrTemplate}.png?amount=${order.grandTotal}&addInfo=${encodeURIComponent('Thanh toan ' + order.id)}&accountName=${encodeURIComponent(storeConfig.accountHolder)}`;
 
   const copyLabels = [
     'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
+    'LIÊN 3: GIAO NHẬN / BẾP',
   ];
+
+  const handleConnectUsb = async () => {
+    setIsConnectingUsb(true);
+    setUsbStatusMsg(null);
+    try {
+      const name = await requestUsbPrinter();
+      if (name) {
+        setUsbPrinterName(name);
+        setUsbStatusMsg(`Đã kết nối máy in USB: ${name}`);
+      }
+    } catch (err: any) {
+      setUsbStatusMsg(`Lỗi kết nối USB: ${err.message}`);
+    } finally {
+      setIsConnectingUsb(false);
+    }
+  };
+
+  const handlePrintUsbOrBrowser = async () => {
+    setUsbStatusMsg(null);
+    try {
+      const isUsbSuccess = await printOrderUsb(order, storeConfig, printCopies);
+      if (isUsbSuccess) {
+        setUsbStatusMsg(`Đã in thành công ${printCopies} bản qua cổng USB/Sunmi D2!`);
+        setTimeout(() => onClose(), 1500);
+        return;
+      }
+    } catch (err: any) {
+      console.warn('Lỗi in USB trực tiếp, chuyển sang in qua trình duyệt:', err);
+      setUsbStatusMsg('Máy in USB chưa phản hồi, chuyển sang hộp thoại in hệ thống.');
+    }
+
+    // Fallback: system print
+    window.print();
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
@@ -38,9 +98,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-[#D6D6C2]" />
             <div>
-              <h3 className="font-bold text-sm text-white">Xem Trước Hóa Đơn (Mẫu {storeConfig.paperSize})</h3>
+              <h3 className="font-bold text-sm text-white">In Hóa Đơn POS Sunmi D2 (Khổ {storeConfig.paperSize})</h3>
               <p className="text-[11px] text-[#D6D6C2] font-medium">
-                Cấu hình in: <span className="font-bold text-white">{printCopies} Bill / Lần In</span>
+                Cấu hình: <span className="font-bold text-amber-300">{printCopies} Bill / Lần In</span>
               </p>
             </div>
           </div>
@@ -51,6 +111,43 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {/* USB Connection Status Bar */}
+        <div className="bg-[#FAF9F6] border-b border-[#E0E0D6] px-4 py-2 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-4 h-4 text-[#5A5A40]" />
+            <span className="font-medium text-[#1A1A1A]">
+              {usbPrinterName ? (
+                <span className="text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {usbPrinterName}
+                </span>
+              ) : (
+                <span className="text-amber-700 font-semibold">Chưa chọn USB Printer</span>
+              )}
+            </span>
+          </div>
+
+          <button
+            onClick={handleConnectUsb}
+            disabled={isConnectingUsb}
+            className="px-2.5 py-1 bg-white hover:bg-[#F5F5F0] border border-[#E0E0D6] rounded-lg font-bold text-[11px] text-[#5A5A40] transition-colors flex items-center gap-1"
+          >
+            {isConnectingUsb ? (
+              <RefreshCw className="w-3 h-3 animate-spin" />
+            ) : (
+              <Cpu className="w-3 h-3" />
+            )}
+            <span>{usbPrinterName ? 'Đổi Máy In USB' : 'Kết Nối USB POS'}</span>
+          </button>
+        </div>
+
+        {usbStatusMsg && (
+          <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
+            <span>{usbStatusMsg}</span>
+          </div>
+        )}
 
         {/* Thermal Receipt Visual Container */}
         <div className="p-6 bg-[#F5F5F0] overflow-y-auto flex-1 flex justify-center">
@@ -67,7 +164,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                 {printCopies > 1 && (
                   <div className="text-center mb-3">
                     <span className="inline-block bg-[#1A1A1A] text-white text-[10px] font-bold px-2.5 py-0.5 rounded tracking-wider">
-                      {copyLabels[copyIdx]}
+                      {copyLabels[copyIdx] || `LIÊN ${copyIdx + 1}`}
                     </span>
                   </div>
                 )}
@@ -204,7 +301,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </div>
                   )}
                   <p className="font-bold text-[11px]">CẢM ƠN VÀ HẸN GẶP LẠI QUÝ KHÁCH!</p>
-                  <p className="text-[9px] text-[#808070]">Phần mềm POS F&B Chuyên Nghiệp</p>
+                  <p className="text-[9px] text-[#808070]">Phần mềm POS Sunmi D2 - CHA CHI BAP</p>
                 </div>
               </div>
             ))}
@@ -220,11 +317,11 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             Đóng
           </button>
           <button
-            onClick={handlePrint}
+            onClick={handlePrintUsbOrBrowser}
             className="flex-1 px-4 py-2.5 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
-            <span>IN {printCopies} BILL HÓA ĐƠN (ESC/POS)</span>
+            <span>IN TỔNG CỘNG {printCopies} BILL (USB / SUNMI D2)</span>
           </button>
         </div>
       </div>
