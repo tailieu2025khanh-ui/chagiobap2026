@@ -67,7 +67,6 @@ export interface UsbPrinterDevice {
 
 let activeUsbDevice: USBDevice | null = null;
 let activeEndpointNumber: number | null = null;
-let activeInterfaceNumber: number | null = null;
 let autoDetectInitialized = false;
 
 /**
@@ -127,10 +126,9 @@ export const initUsbAutoDetect = (onDeviceChange?: (deviceName: string | null) =
   // Auto handle disconnect
   usbApi.addEventListener('disconnect', (event: { device: USBDevice }) => {
     console.log('Máy in USB đã ngắt kết nối:', event.device);
-    if (activeUsbDevice === event.device) {
+    if (event?.device && activeUsbDevice === event.device) {
       activeUsbDevice = null;
       activeEndpointNumber = null;
-      activeInterfaceNumber = null;
       if (onDeviceChange) onDeviceChange(null);
     }
   });
@@ -214,7 +212,6 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
   if (targetInterface && targetEndpoint) {
     try {
       await device.claimInterface(targetInterface.interfaceNumber);
-      activeInterfaceNumber = targetInterface.interfaceNumber;
       activeEndpointNumber = targetEndpoint.endpointNumber;
     } catch (claimErr) {
       console.warn('Cổng USB đã được quản lý bởi Driver hệ thống, sử dụng fallback in hệ thống:', claimErr);
@@ -424,7 +421,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
 };
 
 /**
- * Print order via USB printer device (Rongta RP335UL / XP / JP), Sunmi JS Bridge, or System Print
+ * Print order via USB printer device (Rongta RP335UL / XP / JP), Sunmi JS Bridge (Driverless Direct Hardware Stream)
  */
 export const printOrderUsb = async (
   order: Order,
@@ -433,7 +430,7 @@ export const printOrderUsb = async (
 ): Promise<boolean> => {
   const safeCopies = copiesCount === 1 ? 1 : 2;
 
-  // 1. Try WebUSB active device or paired USB printer FIRST (Supports Rongta RP335UL plugged into Sunmi D2 or Laptop)
+  // 1. Try WebUSB active device or paired USB printer FIRST
   if (isWebUsbSupported()) {
     const usbApi = (navigator as any).usb;
     if (!activeUsbDevice && usbApi) {
@@ -444,6 +441,16 @@ export const printOrderUsb = async (
         }
       } catch (err) {
         console.warn('Không kết nối lại được thiết bị USB tự động:', err);
+      }
+    }
+
+    // If still not paired, prompt WebUSB device selection dialog once to pair USB printer
+    if (!activeUsbDevice && usbApi) {
+      try {
+        const devName = await requestUsbPrinter();
+        if (!devName) return false;
+      } catch (err) {
+        console.warn('Người dùng chưa chọn máy in USB:', err);
       }
     }
 
@@ -477,11 +484,10 @@ export const printOrderUsb = async (
         return true;
       }
     } catch (err) {
-      console.warn('Lỗi Sunmi Native Printer, fallback sang System Print:', err);
+      console.warn('Lỗi Sunmi Native Printer:', err);
     }
   }
 
-  // 3. Fallback: window.print() (System Print Driver for Rongta RP335UL / Canon / JP / XP)
   return false;
 };
 
