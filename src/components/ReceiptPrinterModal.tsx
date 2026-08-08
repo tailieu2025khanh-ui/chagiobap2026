@@ -90,10 +90,10 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
+    <div id="printable-receipt-wrapper" className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden border border-[#E0E0D6]">
         {/* Modal Top Bar */}
-        <div className="bg-[#2C2C24] text-white p-4 flex items-center justify-between border-b border-[#3E3E34]">
+        <div className="modal-top-bar no-print bg-[#2C2C24] text-white p-4 flex items-center justify-between border-b border-[#3E3E34]">
           <div className="flex items-center gap-2">
             <Printer className="w-5 h-5 text-[#D6D6C2]" />
             <div>
@@ -112,7 +112,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         </div>
 
         {/* USB Connection Status Bar */}
-        <div className="bg-[#FAF9F6] border-b border-[#E0E0D6] px-4 py-2 flex items-center justify-between text-xs">
+        <div className="modal-status-bar no-print bg-[#FAF9F6] border-b border-[#E0E0D6] px-4 py-2 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2">
             <Cpu className="w-4 h-4 text-[#5A5A40]" />
             <span className="font-medium text-[#1A1A1A]">
@@ -142,7 +142,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         </div>
 
         {usbStatusMsg && (
-          <div className="bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
+          <div className="no-print bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
             <span>{usbStatusMsg}</span>
           </div>
@@ -159,7 +159,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             style={{ fontFamily: "'Courier New', Courier, monospace" }}
           >
             {Array.from({ length: printCopies }).map((_, copyIdx) => (
-              <div key={copyIdx} className={copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}>
+              <div key={copyIdx} className={`receipt-copy ${copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}`}>
                 {printCopies > 1 && (
                   <div className="text-center mb-3">
                     <span className="inline-block bg-[#1A1A1A] text-white text-[10px] font-bold px-2.5 py-0.5 rounded tracking-wider">
@@ -308,7 +308,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         </div>
 
         {/* Modal Action Footer */}
-        <div className="p-4 bg-[#FAF9F6] border-t border-[#E0E0D6] flex items-center justify-between gap-3">
+        <div className="modal-footer no-print p-4 bg-[#FAF9F6] border-t border-[#E0E0D6] flex items-center justify-between gap-3">
           <button
             onClick={onClose}
             className="px-4 py-2.5 rounded-xl border border-[#E0E0D6] font-semibold text-[#808070] hover:bg-white text-xs transition-colors"
