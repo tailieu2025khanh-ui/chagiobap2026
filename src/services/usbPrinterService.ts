@@ -90,40 +90,22 @@ export const isSunmiNativePrinter = (): boolean => {
  */
 export const requestUsbPrinter = async (): Promise<string | null> => {
   if (!isWebUsbSupported()) {
-    throw new Error('Trình duyệt hiện tại không hỗ trợ WebUSB. Hãy sử dụng Google Chrome trên Máy POS Sunmi D2.');
+    throw new Error('Trình duyệt hiện tại không hỗ trợ WebUSB. Hãy sử dụng Google Chrome trên Laptop hoặc Máy POS Sunmi D2.');
   }
 
   const usbApi = (navigator as any).usb;
 
   try {
-    // Request device with printer filter or open filter
-    const device: USBDevice = await usbApi.requestDevice({
-      filters: [
-        { classCode: 7 }, // USB Printer Class
-        { vendorId: 0x04b8 }, // Epson
-        { vendorId: 0x1fc9 }, // NXP / Sunmi
-        { vendorId: 0x0483 }, // STMicroelectronics / Xprinter
-        { vendorId: 0x0dd4 }, // Custom POS
-        { vendorId: 0x1a86 }, // QinHeng / Winpal
-        { vendorId: 0x0416 }, // Winbond / Pos printer
-      ],
-    });
-
+    // Request device with empty filters to allow ALL USB printer brands (JP, XP, Xprinter, Epson, Sunmi, Birch, Canon...)
+    const device: USBDevice = await usbApi.requestDevice({ filters: [] });
     await connectToUsbDevice(device);
     return device.productName || `Máy In USB (${device.vendorId.toString(16)}:${device.productId.toString(16)})`;
   } catch (err: any) {
     if (err.name === 'NotFoundError') {
       return null; // User cancelled
     }
-    // Fallback: try request device without filters if vendor filter rejected
-    try {
-      const device: USBDevice = await usbApi.requestDevice({ filters: [] });
-      await connectToUsbDevice(device);
-      return device.productName || 'Máy In USB';
-    } catch (fallbackErr: any) {
-      console.error('Lỗi chọn thiết bị USB:', fallbackErr);
-      throw new Error(fallbackErr.message || 'Không thể kết nối với cổng USB máy in.');
-    }
+    console.error('Lỗi chọn thiết bị USB:', err);
+    throw new Error(err.message || 'Không thể kết nối với cổng USB máy in.');
   }
 };
 
