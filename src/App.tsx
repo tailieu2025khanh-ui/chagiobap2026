@@ -33,6 +33,7 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { StaffQuizModal } from './components/StaffQuizModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { getStoredApiKey } from './services/geminiService';
+import { printOrderUsb } from './services/usbPrinterService';
 
 export default function App() {
   // Persistence Helper
@@ -81,11 +82,15 @@ export default function App() {
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
-  // Auto-migrate legacy store name and check API key on mount
+  // Auto-migrate legacy store config (Sunmi D2 USB printer & 2 copies default) and check API key on mount
   useEffect(() => {
-    if (!storeConfig.storeName || storeConfig.storeName.includes('SAIGON COFFEE')) {
-      setStoreConfig((prev) => ({ ...prev, storeName: 'CHA CHI BAP' }));
-    }
+    setStoreConfig((prev) => ({
+      ...prev,
+      storeName: !prev.storeName || prev.storeName.includes('SAIGON COFFEE') ? 'CHA CHI BAP' : prev.storeName,
+      printCopies: prev.printCopies === 3 || !prev.printCopies ? 2 : prev.printCopies,
+      printerType: prev.printerType || 'usb',
+    }));
+
     if (!getStoredApiKey()) {
       setIsApiKeyModalOpen(true);
     }
@@ -287,9 +292,18 @@ export default function App() {
     setCustomerNote('');
     setPayingOrder(null);
 
-    // Auto Print Trigger
+    // Auto Print Trigger - Tự động in bill ngay khi bấm thanh toán
     if (autoPrint) {
-      setPrintingOrder(completedOrder);
+      printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2)
+        .then((printed) => {
+          if (!printed) {
+            // Mở modal nếu cần trình duyệt hỗ trợ in hệ thống
+            setPrintingOrder(completedOrder);
+          }
+        })
+        .catch(() => {
+          setPrintingOrder(completedOrder);
+        });
     }
   };
 
