@@ -346,7 +346,7 @@ export default function App() {
       />
 
       {/* Main Content Area based on Active Tab */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 flex flex-col overflow-hidden no-print">
         {activeTab === 'pos' && (
           <CashierPOS
             menuItems={menuItems}
