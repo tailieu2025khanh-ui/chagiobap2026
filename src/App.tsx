@@ -7,9 +7,6 @@ import {
   Shift,
   StoreConfig,
   CartItem,
-  OrderType,
-  PaymentMethod,
-  KitchenStatus,
 } from './types/pos';
 import {
   DEFAULT_STORE_CONFIG,
@@ -32,7 +29,6 @@ import { ReceiptPrinterModal } from './components/ReceiptPrinterModal';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { StaffQuizModal } from './components/StaffQuizModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
-import { getStoredApiKey } from './services/geminiService';
 import { printOrderUsb, initUsbAutoDetect } from './services/usbPrinterService';
 
 export default function App() {
@@ -289,17 +285,21 @@ export default function App() {
     setCustomerNote('');
     setPayingOrder(null);
 
-    // Auto Print Trigger - Tự động in bill ngay khi bấm thanh toán
+    // Auto Print Trigger - In bill tự động tức thì khi bấm thanh toán (Không mở modal xem trước)
+    setPrintingOrder(completedOrder);
     if (autoPrint) {
       printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2)
         .then((printed) => {
           if (!printed) {
-            // Mở modal nếu cần trình duyệt hỗ trợ in hệ thống
-            setPrintingOrder(completedOrder);
+            setTimeout(() => {
+              window.print();
+            }, 100);
           }
         })
         .catch(() => {
-          setPrintingOrder(completedOrder);
+          setTimeout(() => {
+            window.print();
+          }, 100);
         });
     }
   };
