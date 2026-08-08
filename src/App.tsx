@@ -82,7 +82,7 @@ export default function App() {
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
-  // Auto-migrate legacy store config (Sunmi D2 USB printer & 2 copies default) and check API key on mount
+  // Auto-migrate legacy store config (Sunmi D2 USB printer & 2 copies default)
   useEffect(() => {
     setStoreConfig((prev) => ({
       ...prev,
@@ -90,10 +90,6 @@ export default function App() {
       printCopies: prev.printCopies === 1 ? 1 : 2,
       printerType: prev.printerType || 'usb',
     }));
-
-    if (!getStoredApiKey()) {
-      setIsApiKeyModalOpen(true);
-    }
   }, []);
 
   // Sync selected table's order if exists
