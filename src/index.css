@@ -40,8 +40,8 @@
     overflow: visible !important;
   }
 
-  /* Hide app navigation header, main content, modal dialog headers, buttons, status bars */
-  header, nav, button, .no-print, .no-print * {
+  /* Hide main POS application layout, headers, navigation, buttons, inputs */
+  main, header, nav, button, input, select, textarea, .no-print, .no-print * {
     display: none !important;
   }
 
