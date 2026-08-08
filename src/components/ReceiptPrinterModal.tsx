@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Order, StoreConfig } from '../types/pos';
-import { Printer, X, CheckCircle2, QrCode, Cpu, AlertCircle, RefreshCw } from 'lucide-react';
+import { Printer, X, CheckCircle2, Cpu, AlertCircle, RefreshCw } from 'lucide-react';
 import {
-  isWebUsbSupported,
-  isSunmiNativePrinter,
   requestUsbPrinter,
   getConnectedUsbPrinterName,
   printOrderUsb,
@@ -150,8 +148,8 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           </button>
         </div>
 
-        <div className="no-print bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-medium text-blue-900 leading-tight">
-          💡 <strong>Cách đổi máy in Rongta RP335UL / JP / XP:</strong> Trong bảng in Chrome (Destination) ➔ Chọn <strong>See more...</strong> ➔ Chọn máy in của bạn. Trình duyệt sẽ tự nhớ cho tất cả lần in sau!
+        <div className="no-print bg-emerald-50 border-b border-emerald-200 px-4 py-2 text-[11px] font-medium text-emerald-900 leading-tight">
+          🔌 <strong>In Trực Tiếp Cổng USB (Không Cần Cài Driver):</strong> Cắm dây USB trực tiếp vào máy POS Sunmi D2 / Laptop. Khi chọn máy in Rongta RP335UL, dữ liệu ESC/POS tự động bắn thẳng vào phần cứng máy in!
         </div>
 
         {usbStatusMsg && (
