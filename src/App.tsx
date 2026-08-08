@@ -87,7 +87,7 @@ export default function App() {
     setStoreConfig((prev) => ({
       ...prev,
       storeName: !prev.storeName || prev.storeName.includes('SAIGON COFFEE') ? 'CHA CHI BAP' : prev.storeName,
-      printCopies: prev.printCopies === 3 || !prev.printCopies ? 2 : prev.printCopies,
+      printCopies: prev.printCopies === 1 ? 1 : 2,
       printerType: prev.printerType || 'usb',
     }));
 
