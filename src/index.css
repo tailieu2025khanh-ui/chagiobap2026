@@ -23,3 +23,73 @@
 
 .border-natural { border-color: #E0E0D6; }
 .border-natural-dark { border-color: #D6D6C2; }
+
+/* Thermal & Document Print Media Query for Sunmi D2 & USB printers */
+@media print {
+  @page {
+    margin: 0mm !important;
+    size: auto !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide app navigation header, main content, modal dialog headers, buttons, status bars */
+  header, nav, button, .no-print, .no-print * {
+    display: none !important;
+  }
+
+  /* Reset all modal containers and overlays so they don't wrap or constrain print pages */
+  div.fixed, div.inset-0, div.backdrop-blur-xs, div.max-h-\[92vh\], div.overflow-y-auto, div.flex-1 {
+    position: static !important;
+    inset: auto !important;
+    background: #ffffff !important;
+    box-shadow: none !important;
+    border: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* Hide modal top bar, status bar, action footer when printing */
+  .modal-top-bar, .modal-status-bar, .modal-footer, .no-print-area {
+    display: none !important;
+  }
+
+  #printable-receipt {
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    font-family: 'Courier New', Courier, monospace !important;
+  }
+
+  /* Force exactly 2 pages (2 sheets of paper) for LIÊN 1 and LIÊN 2 */
+  .receipt-copy {
+    page-break-after: always !important;
+    break-after: page !important;
+    padding: 8px 12px !important;
+    box-sizing: border-box !important;
+    background: #ffffff !important;
+  }
+
+  .receipt-copy:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+}
