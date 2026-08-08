@@ -183,10 +183,11 @@ export default function App() {
     alert(`Đã gửi đơn ${orderId} xuống Bếp & Pha chế chế biến!`);
   };
 
-  // Open Payment Modal
+  // Instant 1-Click Payment & Print when clicking THANH TOÁN (Direct Checkout, 0 Modals)
   const handleOpenPayment = () => {
     if (cartItems.length === 0) return;
 
+    const orderType: OrderType = selectedTable ? 'table' : 'takeaway';
     const subtotal = cartItems.reduce((sum, item) => sum + item.totalPrice, 0);
     const discountAmount = Math.round((subtotal * discountPercent) / 100);
     const afterDiscount = subtotal - discountAmount;
@@ -198,7 +199,7 @@ export default function App() {
       orderId = selectedTable.currentOrderId;
     }
 
-    const tempOrder: Order = {
+    const completedOrder: Order = {
       id: orderId,
       orderCode: `POS${1000 + orders.length + 1}`,
       tableId: selectedTable?.id,
@@ -211,14 +212,58 @@ export default function App() {
       vatPercent,
       vatAmount,
       grandTotal,
-      paymentStatus: 'unpaid',
+      paymentMethod: 'cash',
+      paymentStatus: 'paid',
       kitchenStatus: 'pending',
       cashierName: shift.cashierName,
       customerNote,
+      paidAmount: grandTotal,
+      changeAmount: 0,
       createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
     };
 
-    setPayingOrder(tempOrder);
+    // Upsert completed order into history
+    const existingIdx = orders.findIndex((o) => o.id === completedOrder.id);
+    if (existingIdx >= 0) {
+      const updated = [...orders];
+      updated[existingIdx] = completedOrder;
+      setOrders(updated);
+    } else {
+      setOrders([completedOrder, ...orders]);
+    }
+
+    // Release table if associated
+    if (completedOrder.tableId) {
+      setTables(
+        tables.map((t) =>
+          t.id === completedOrder.tableId
+            ? { ...t, status: 'empty', currentOrderId: undefined }
+            : t
+        )
+      );
+    }
+
+    // Update Shift Revenue
+    setShift((prev) => ({
+      ...prev,
+      totalRevenue: prev.totalRevenue + grandTotal,
+      totalOrders: prev.totalOrders + 1,
+      cashRevenue: prev.cashRevenue + grandTotal,
+      closingCashCalculated: prev.closingCashCalculated + grandTotal,
+    }));
+
+    // Reset Cart
+    setCartItems([]);
+    setSelectedTable(null);
+    setDiscountPercent(0);
+    setVatPercent(0);
+    setCustomerNote('');
+    setPayingOrder(null);
+    setPrintingOrder(completedOrder);
+
+    // Instant Direct USB Hardware Print - 0 Modals, 0 Dialogs
+    printOrderUsb(completedOrder, storeConfig, storeConfig.printCopies || 2);
   };
 
   // Pay directly from Table Manager
