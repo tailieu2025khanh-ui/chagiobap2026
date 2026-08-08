@@ -141,6 +141,10 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           </button>
         </div>
 
+        <div className="no-print bg-blue-50 border-b border-blue-200 px-4 py-2 text-[11px] font-medium text-blue-900 leading-tight">
+          💡 <strong>Cách đổi sang Máy in JP / XP / Sunmi:</strong> Trong bảng in Chrome (Destination) ➔ Chọn <strong>See more...</strong> ➔ Chọn máy in <strong>JP</strong> của bạn. Trình duyệt sẽ nhớ máy in JP cho tất cả lần in sau!
+        </div>
+
         {usbStatusMsg && (
           <div className="no-print bg-amber-50 border-b border-amber-200 px-4 py-1.5 text-[11px] font-semibold text-amber-800 flex items-center gap-1.5">
             <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-600" />
