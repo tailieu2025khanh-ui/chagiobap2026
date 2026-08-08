@@ -1,4 +1,4 @@
-// USB & Sunmi D2 ESC/POS Thermal Printer Service (Rongta, Sunmi, JP, XP, Epson, Canon...)
+// USB & Sunmi D2 ESC/POS Thermal Printer Service (Rongta RP335UL, Sunmi, JP, XP, Epson, Canon...)
 
 import { Order, StoreConfig } from '../types/pos';
 
@@ -39,10 +39,7 @@ declare global {
   }
 
   interface Navigator {
-    usb?: {
-      requestDevice: (options: { filters: any[] }) => Promise<USBDevice>;
-      getDevices: () => Promise<USBDevice[]>;
-    };
+    usb?: any;
   }
 
   interface Window {
@@ -71,6 +68,26 @@ export interface UsbPrinterDevice {
 let activeUsbDevice: USBDevice | null = null;
 let activeEndpointNumber: number | null = null;
 let activeInterfaceNumber: number | null = null;
+let autoDetectInitialized = false;
+
+/**
+ * Format friendly name for connected USB printers (recognizing Rongta RP335UL)
+ */
+export const formatPrinterName = (device: USBDevice): string => {
+  const name = device.productName || '';
+  const vidHex = device.vendorId.toString(16).toLowerCase();
+
+  if (name.toUpperCase().includes('RP335') || name.toUpperCase().includes('RONGTA')) {
+    return `Máy In Rongta RP335UL (${name || 'USB Thermal'})`;
+  }
+
+  // Common Rongta VIDs (0x0483, 0x0dd4, 0x1504, 0x0416, 0x1a86, 0x0fe6)
+  if (['0483', '0dd4', '1504', '0416', '1a86', '0fe6'].includes(vidHex)) {
+    return name ? `Máy In Rongta RP335UL (${name})` : 'Máy In USB Rongta RP335UL';
+  }
+
+  return name || `Máy In USB POS (${vidHex}:${device.productId.toString(16)})`;
+};
 
 /**
  * Check if WebUSB API is supported by current browser/webview
@@ -87,7 +104,45 @@ export const isSunmiNativePrinter = (): boolean => {
 };
 
 /**
- * Request user to pick a USB Thermal Printer device (Rongta, Sunmi, JP, XP, Epson...)
+ * Auto-detect Rongta RP335UL printer when USB cable is plugged in (Plug & Play)
+ */
+export const initUsbAutoDetect = (onDeviceChange?: (deviceName: string | null) => void): void => {
+  if (!isWebUsbSupported() || autoDetectInitialized) return;
+  autoDetectInitialized = true;
+
+  const usbApi = (navigator as any).usb;
+
+  // Auto connect when USB cable is inserted
+  usbApi.addEventListener('connect', async (event: { device: USBDevice }) => {
+    console.log('Phát hiện máy in USB cắm vào:', event.device);
+    try {
+      await connectToUsbDevice(event.device);
+      const name = formatPrinterName(event.device);
+      if (onDeviceChange) onDeviceChange(name);
+    } catch (err) {
+      console.warn('Lỗi tự động kết nối máy in USB:', err);
+    }
+  });
+
+  // Auto handle disconnect
+  usbApi.addEventListener('disconnect', (event: { device: USBDevice }) => {
+    console.log('Máy in USB đã ngắt kết nối:', event.device);
+    if (activeUsbDevice === event.device) {
+      activeUsbDevice = null;
+      activeEndpointNumber = null;
+      activeInterfaceNumber = null;
+      if (onDeviceChange) onDeviceChange(null);
+    }
+  });
+
+  // Check existing paired devices on load
+  getConnectedUsbPrinterName().then((name) => {
+    if (name && onDeviceChange) onDeviceChange(name);
+  });
+};
+
+/**
+ * Request user to pick a USB Thermal Printer device (Rongta RP335UL, Sunmi, JP, XP, Epson...)
  */
 export const requestUsbPrinter = async (): Promise<string | null> => {
   if (!isWebUsbSupported()) {
@@ -97,10 +152,10 @@ export const requestUsbPrinter = async (): Promise<string | null> => {
   const usbApi = (navigator as any).usb;
 
   try {
-    // Request device with empty filters to allow ALL USB printer brands (Rongta, JP, XP, Xprinter, Epson, Sunmi, Birch, Canon...)
+    // Request device with empty filters to allow ALL USB printer models (Rongta RP335UL, JP, XP, Xprinter, Epson, Sunmi, Canon...)
     const device: USBDevice = await usbApi.requestDevice({ filters: [] });
     await connectToUsbDevice(device);
-    return device.productName || `Máy In USB Rongta/POS (${device.vendorId.toString(16)}:${device.productId.toString(16)})`;
+    return formatPrinterName(device);
   } catch (err: any) {
     if (err.name === 'NotFoundError') {
       return null; // User cancelled
@@ -122,7 +177,7 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
       openErr.message?.includes('Access denied') ||
       openErr.message?.includes('already open')
     ) {
-      console.warn('Thiết bị USB Rongta/POS đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
+      console.warn('Thiết bị USB Rongta RP335UL đã được Windows / Sunmi OS Driver quản lý. Tự động chuyển sang chế độ in Driver Hệ Thống.');
       activeUsbDevice = device;
       activeEndpointNumber = null;
       return;
@@ -175,7 +230,7 @@ const connectToUsbDevice = async (device: USBDevice): Promise<void> => {
  */
 export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
   if (activeUsbDevice) {
-    return activeUsbDevice.productName || 'Máy in USB Rongta / POS';
+    return formatPrinterName(activeUsbDevice);
   }
 
   if (isWebUsbSupported()) {
@@ -186,9 +241,9 @@ export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
         const device = paired[0];
         try {
           await connectToUsbDevice(device);
-          return device.productName || 'Máy in USB Rongta / Sunmi D2';
+          return formatPrinterName(device);
         } catch {
-          return paired[0].productName || 'Máy in USB Rongta / Sunmi D2 (Driver OS)';
+          return formatPrinterName(device) + ' (Driver OS)';
         }
       }
     } catch (err) {
@@ -204,7 +259,7 @@ export const getConnectedUsbPrinterName = async (): Promise<string | null> => {
 };
 
 /**
- * Generate ESC/POS Binary Buffer for an Order
+ * Generate ESC/POS Binary Buffer for an Order (Optimized for Rongta RP335UL)
  */
 export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copiesCount: number = 2): Uint8Array => {
   const bytes: number[] = [];
@@ -229,11 +284,11 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
   ];
 
-  // Enforce strictly maximum 2 copies for Sunmi D2 POS / Rongta
+  // Enforce strictly maximum 2 copies for Sunmi D2 POS / Rongta RP335UL
   const actualCopies = copiesCount === 1 ? 1 : 2;
 
   for (let copyIdx = 0; copyIdx < actualCopies; copyIdx++) {
-    // ESC @ Initialize Printer
+    // ESC @ Initialize Printer (Rongta RP335UL ESC/POS Reset)
     addBytes(0x1b, 0x40);
 
     // Set code page CP858 / standard
@@ -358,10 +413,10 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addBytes(0x1b, 0x61, 0x01);
     addStr('-'.repeat(maxChars) + '\n');
     addStr('CAM ON VA HEN GAP LAI QUY KHACH!\n');
-    addStr('POS Sunmi D2 - CHA CHI BAP F&B\n');
+    addStr('Rongta RP335UL - CHA CHI BAP POS\n');
 
-    // Feed lines before cut (Rongta / Sunmi ESC/POS partial cut command)
-    addBytes(0x1d, 0x56, 0x42, 0x03); // GS V 66 3 (Partial Cut with paper feed)
+    // Feed lines & Auto Cut command for Rongta RP335UL (GS V 66 3 / GS V 1)
+    addBytes(0x1d, 0x56, 0x42, 0x03);
     addBytes(0x0a, 0x0a, 0x0a);
   }
 
@@ -369,7 +424,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
 };
 
 /**
- * Print order via USB printer device (Rongta / XP / JP), Sunmi JS Bridge, or System Print
+ * Print order via USB printer device (Rongta RP335UL / XP / JP), Sunmi JS Bridge, or System Print
  */
 export const printOrderUsb = async (
   order: Order,
@@ -378,7 +433,7 @@ export const printOrderUsb = async (
 ): Promise<boolean> => {
   const safeCopies = copiesCount === 1 ? 1 : 2;
 
-  // 1. Try WebUSB active device or paired USB printer FIRST (Supports Rongta, XP, JP, Epson plugged into Sunmi D2 or Laptop)
+  // 1. Try WebUSB active device or paired USB printer FIRST (Supports Rongta RP335UL plugged into Sunmi D2 or Laptop)
   if (isWebUsbSupported()) {
     const usbApi = (navigator as any).usb;
     if (!activeUsbDevice && usbApi) {
@@ -398,7 +453,7 @@ export const printOrderUsb = async (
         await activeUsbDevice.transferOut(activeEndpointNumber, buffer);
         return true;
       } catch (err: any) {
-        console.error('Lỗi khi gửi dữ liệu ESC/POS qua cổng USB Rongta:', err);
+        console.error('Lỗi khi gửi dữ liệu ESC/POS qua cổng USB Rongta RP335UL:', err);
       }
     }
   }
@@ -426,7 +481,7 @@ export const printOrderUsb = async (
     }
   }
 
-  // 3. Fallback: window.print() (System Print Driver for Rongta / Canon / JP / XP)
+  // 3. Fallback: window.print() (System Print Driver for Rongta RP335UL / Canon / JP / XP)
   return false;
 };
 
@@ -438,7 +493,7 @@ export const removeVietnameseTones = (str: string): string => {
   str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, 'a');
   str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, 'e');
   str = str.replace(/ì|í|ị|ỉ|ĩ/g, 'i');
-  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
+  str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỡ|ơ|ờ|ớ|ợ|ở|ỡ/g, 'o');
   str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, 'u');
   str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g, 'y');
   str = str.replace(/đ/g, 'd');
