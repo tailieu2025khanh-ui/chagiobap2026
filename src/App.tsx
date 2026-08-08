@@ -33,7 +33,7 @@ import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { StaffQuizModal } from './components/StaffQuizModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { getStoredApiKey } from './services/geminiService';
-import { printOrderUsb } from './services/usbPrinterService';
+import { printOrderUsb, initUsbAutoDetect } from './services/usbPrinterService';
 
 export default function App() {
   // Persistence Helper
@@ -82,8 +82,9 @@ export default function App() {
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
-  // Auto-migrate legacy store config (Sunmi D2 USB printer & 2 copies default)
+  // Auto-migrate legacy store config & init Plug and Play USB Printer Auto Detect for Rongta RP335UL
   useEffect(() => {
+    initUsbAutoDetect();
     setStoreConfig((prev) => ({
       ...prev,
       storeName: !prev.storeName || prev.storeName.includes('SAIGON COFFEE') ? 'CHA CHI BAP' : prev.storeName,
