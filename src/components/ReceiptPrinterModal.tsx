@@ -86,7 +86,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
     }
   }, [isOpen, order, checkUsbStatus, handlePrintUsbOrBrowser, storeConfig.autoPrintReceipt]);
 
-  if (!isOpen || !order) return null;
+  if (!order) return null;
 
   const is58mm = storeConfig.paperSize === '58mm';
   const qrUrl = `https://img.vietqr.io/image/${storeConfig.bankName}-${storeConfig.bankAccount}-${storeConfig.qrTemplate}.png?amount=${order.grandTotal}&addInfo=${encodeURIComponent('Thanh toan ' + order.id)}&accountName=${encodeURIComponent(storeConfig.accountHolder)}`;
@@ -97,7 +97,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
   ];
 
   return (
-    <div id="printable-receipt-wrapper" className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
+    <div id="printable-receipt-wrapper" className={isOpen ? "fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn" : "hidden print:block"}>
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden border border-[#E0E0D6]">
         {/* Modal Top Bar */}
         <div className="modal-top-bar no-print bg-[#2C2C24] text-white p-4 flex items-center justify-between border-b border-[#3E3E34]">
