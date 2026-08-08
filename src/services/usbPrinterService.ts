@@ -220,10 +220,10 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
   const copyLabels = [
     'LIÊN 1: DÀNH CHO KHÁCH HÀNG',
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
-    'LIÊN 3: GIAO NHẬN / BẾP',
   ];
 
-  const actualCopies = Math.max(1, copiesCount);
+  // Enforce strictly maximum 2 copies for Sunmi D2 POS
+  const actualCopies = copiesCount === 1 ? 1 : 2;
 
   for (let copyIdx = 0; copyIdx < actualCopies; copyIdx++) {
     // ESC @ Initialize Printer
@@ -369,12 +369,14 @@ export const printOrderUsb = async (
   storeConfig: StoreConfig,
   copiesCount: number = 2
 ): Promise<boolean> => {
+  const safeCopies = copiesCount === 1 ? 1 : 2;
+
   // 1. Try Sunmi Native JS Bridge first if on Sunmi POS
   if (isSunmiNativePrinter()) {
     try {
       const p = window.sunmiInnerPrinter;
       if (p) {
-        for (let i = 0; i < copiesCount; i++) {
+        for (let i = 0; i < safeCopies; i++) {
           p.setAlignment(1);
           p.setFontSize(32);
           p.printText(`${storeConfig.storeName}\n`);
