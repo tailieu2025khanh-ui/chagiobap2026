@@ -43,12 +43,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         return;
       }
     } catch (err: any) {
-      console.warn('Lỗi in USB trực tiếp, chuyển sang in qua trình duyệt:', err);
-      setUsbStatusMsg('Máy in USB chưa phản hồi, chuyển sang hộp thoại in hệ thống.');
+      console.warn('Lỗi in USB trực tiếp:', err);
+      setUsbStatusMsg('Vui lòng kiểm tra cáp kết nối USB máy in Rongta RP335UL / Sunmi D2.');
     }
-
-    // Fallback: system print
-    window.print();
   }, [order, storeConfig, printCopies, onClose]);
 
   const handleConnectUsb = async () => {
