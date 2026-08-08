@@ -315,7 +315,7 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
               {/* USB Device Pairing Action Box */}
               {(formData.printerType === 'usb' || formData.printerType === 'sunmi') && (
                 <div className="bg-[#FAF9F6] p-3 rounded-xl border border-[#E0E0D6] flex flex-col justify-center space-y-1">
-                  <span className="font-bold text-[#1A1A1A]">Kết Nối Cổng USB Máy In Sunmi D2:</span>
+                  <span className="font-bold text-[#1A1A1A]">Kết Nối Cổng USB Máy In (Tất cả thương hiệu JP / XP / Sunmi / Canon...):</span>
                   <div className="flex items-center justify-between gap-2 mt-1">
                     <span className="text-xs font-semibold text-emerald-800 truncate">
                       {usbDeviceName ? `✔ ${usbDeviceName}` : 'Chưa ghép nối máy in USB'}
