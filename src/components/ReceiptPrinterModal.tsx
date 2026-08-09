@@ -182,8 +182,8 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     {storeConfig.storeName}
                   </h2>
                   <p className="text-[11px] leading-tight text-[#808070]">{storeConfig.address}</p>
-                  <p className="text-[11px]">SĐT: {storeConfig.phone}</p>
-                  <p className="text-[10px] text-[#808070]">Wifi: {storeConfig.wifiName} | Mật khẩu: {storeConfig.wifiPass}</p>
+                  <p className="text-[11px] font-bold text-black">SĐT: {storeConfig.phone}</p>
+                  <p className="text-[11px] font-bold text-black">Wifi: {storeConfig.wifiName} | Mật khẩu: {storeConfig.wifiPass}</p>
                 </div>
 
                 {/* Bill Title & Meta */}
@@ -197,20 +197,12 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     <span>Ngày tạo:</span>
                     <span>{new Date(order.createdAt).toLocaleString('vi-VN')}</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Loại đơn:</span>
-                    <span className="font-bold">
-                      {order.orderType === 'table'
-                        ? `Tại bàn (${order.tableName || 'N/A'})`
-                        : order.orderType === 'takeaway'
-                        ? 'Mang về'
-                        : 'Giao hàng'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Thu ngân:</span>
-                    <span>{order.cashierName}</span>
-                  </div>
+                  {order.tableName && (
+                    <div className="flex justify-between font-bold text-black">
+                      <span>Vị trí / Bàn:</span>
+                      <span>{order.tableName}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Items Table */}
@@ -242,7 +234,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                           )}
                         </td>
                         <td className="py-2 px-1 text-center font-extrabold text-sm sm:text-base text-black">
-                          x{item.quantity}
+                          {item.quantity}
                         </td>
                         <td className="py-2 px-1 text-right text-xs text-[#666]">
                           {item.unitPrice.toLocaleString('vi-VN')}
@@ -257,11 +249,6 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
 
                 {/* Totals Summary */}
                 <div className="text-xs space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
-                  <div className="flex justify-between text-[#808070]">
-                    <span>Tạm tính:</span>
-                    <span>{order.subtotal.toLocaleString('vi-VN')} đ</span>
-                  </div>
-
                   {order.discountPercent > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium text-[11px]">
                       <span>Giảm giá ({order.discountPercent}%):</span>
@@ -280,32 +267,6 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     <span>TỔNG CỘNG:</span>
                     <span className="text-base">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
                   </div>
-
-                  <div className="flex justify-between text-[11px] text-[#808070] pt-1">
-                    <span>Hình thức thanh toán:</span>
-                    <span className="font-bold text-[#1A1A1A]">
-                      {order.paymentMethod === 'cash'
-                        ? 'Tiền mặt'
-                        : order.paymentMethod === 'transfer'
-                        ? 'Chuyển khoản'
-                        : order.paymentMethod === 'card'
-                        ? 'Thẻ POS'
-                        : 'Ví MoMo'}
-                    </span>
-                  </div>
-
-                  {order.paymentMethod === 'cash' && order.paidAmount && (
-                    <>
-                      <div className="flex justify-between text-[11px] text-[#808070]">
-                        <span>Tiền khách đưa:</span>
-                        <span>{order.paidAmount.toLocaleString('vi-VN')} đ</span>
-                      </div>
-                      <div className="flex justify-between text-[11px] font-bold text-emerald-800">
-                        <span>Tiền trả lại:</span>
-                        <span>{(order.changeAmount || 0).toLocaleString('vi-VN')} đ</span>
-                      </div>
-                    </>
-                  )}
                 </div>
 
                 {/* Footer QR / Thank you */}
