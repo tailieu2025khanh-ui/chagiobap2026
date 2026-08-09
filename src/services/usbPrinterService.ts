@@ -292,8 +292,10 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     // Normal Text
     addBytes(0x1d, 0x21, 0x00);
     addStr((storeConfig.address || '') + '\n');
+    addBytes(0x1b, 0x45, 0x01); // Bold ON for Phone & Wifi
     addStr(`SDT: ${storeConfig.phone || ''}\n`);
     addStr(`Wifi: ${storeConfig.wifiName || ''} - MK: ${storeConfig.wifiPass || ''}\n`);
+    addBytes(0x1b, 0x45, 0x00); // Bold OFF
     addStr('-'.repeat(maxChars) + '\n');
 
     // Copy Label Badge (If 2 or more copies)
@@ -310,14 +312,9 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addBytes(0x1d, 0x21, 0x00);
     addStr(`Ma HD: ${order.id}\n`);
     addStr(`Ngay: ${new Date(order.createdAt).toLocaleString('vi-VN')}\n`);
-
-    const orderTypeStr =
-      order.orderType === 'table'
-        ? `Tai ban: ${order.tableName || 'N/A'}`
-        : order.orderType === 'takeaway'
-        ? 'Mang ve'
-        : 'Giao hang';
-    addStr(`Loai: ${orderTypeStr} | Thu ngan: ${order.cashierName}\n`);
+    if (order.tableName) {
+      addStr(`Vi tri / Ban: ${order.tableName}\n`);
+    }
     addStr('='.repeat(maxChars) + '\n');
 
     // ESC a 0 Left Alignment
@@ -336,7 +333,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     // Items - Dish Name & Quantity in Large Bold Font (Same as bottom total row)
     for (const item of order.items) {
       const name = removeVietnameseTones(item.menuItem?.name || 'Mon ăn');
-      const qtyStr = `x${item.quantity}`;
+      const qtyStr = `${item.quantity}`;
       const priceStr = item.unitPrice.toLocaleString('vi-VN');
       const totalStr = item.totalPrice.toLocaleString('vi-VN');
 
@@ -348,7 +345,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
         addStr(`${name.toUpperCase()}\n`);
         addStr(`  SL: ${qtyStr} | TT: ${totalStr} d\n`);
       } else {
-        addStr(`${name.toUpperCase()}  (${qtyStr})\n`);
+        addStr(`${name.toUpperCase()}  (SL: ${qtyStr})\n`);
       }
 
       addBytes(0x1d, 0x21, 0x00); // Double Height OFF
@@ -374,7 +371,6 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
 
     // Totals
     addBytes(0x1b, 0x61, 0x02); // Right align
-    addStr(`Tam tinh: ${order.subtotal.toLocaleString('vi-VN')} d\n`);
     if (order.discountPercent > 0) {
       addStr(`Giam gia (${order.discountPercent}%): -${order.discountAmount.toLocaleString('vi-VN')} d\n`);
     }
@@ -387,18 +383,6 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addStr(`TONG CONG: ${order.grandTotal.toLocaleString('vi-VN')} d\n`);
     addBytes(0x1d, 0x21, 0x00);
     addBytes(0x1b, 0x45, 0x00); // Bold OFF
-
-    const payMethodMap: Record<string, string> = {
-      cash: 'Tien Mat',
-      transfer: 'Chuyen Khoan VietQR',
-      card: 'The ATM / POS',
-      momo: 'Vi Dien Tu',
-    };
-    addStr(`Hinh thuc TT: ${payMethodMap[order.paymentMethod || 'cash'] || 'Tien Mat'}\n`);
-    if (order.paymentMethod === 'cash' && order.paidAmount) {
-      addStr(`Khach dua: ${order.paidAmount.toLocaleString('vi-VN')} d\n`);
-      addStr(`Tien tra lai: ${(order.changeAmount || 0).toLocaleString('vi-VN')} d\n`);
-    }
 
     // Center align footer
     addBytes(0x1b, 0x61, 0x01);
