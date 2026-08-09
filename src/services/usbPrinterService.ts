@@ -333,37 +333,40 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addBytes(0x1b, 0x45, 0x00); // Bold OFF
     addStr('-'.repeat(maxChars) + '\n');
 
-    // Items
+    // Items - Dish Name & Quantity in Large Bold Font (Same as bottom total row)
     for (const item of order.items) {
       const name = removeVietnameseTones(item.menuItem?.name || 'Mon ăn');
-      const qtyStr = item.quantity.toString();
+      const qtyStr = `x${item.quantity}`;
       const priceStr = item.unitPrice.toLocaleString('vi-VN');
       const totalStr = item.totalPrice.toLocaleString('vi-VN');
 
+      // Double Height + Bold ON for Dish Name and Quantity (Large Font as requested!)
+      addBytes(0x1b, 0x45, 0x01); // Bold ON
+      addBytes(0x1d, 0x21, 0x01); // Double Height Font ON (Equal to bottom total row)
+
       if (is58mm) {
-        addStr(name.slice(0, 16).padEnd(16, ' ') + ' ' + qtyStr.padStart(2, ' ') + ' ' + totalStr.padStart(10, ' ') + '\n');
+        addStr(`${name.toUpperCase()}\n`);
+        addStr(`  SL: ${qtyStr} | TT: ${totalStr} d\n`);
       } else {
-        addStr(
-          name.slice(0, 20).padEnd(20, ' ') +
-            ' ' +
-            qtyStr.padStart(3, ' ') +
-            ' ' +
-            priceStr.padStart(8, ' ') +
-            ' ' +
-            totalStr.padStart(8, ' ') +
-            '\n'
-        );
+        addStr(`${name.toUpperCase()}  (${qtyStr})\n`);
+      }
+
+      addBytes(0x1d, 0x21, 0x00); // Double Height OFF
+      addBytes(0x1b, 0x45, 0x00); // Bold OFF
+
+      if (!is58mm) {
+        addStr(`  Don gia: ${priceStr} d  -> Thanh tien: ${totalStr} d\n`);
       }
 
       // Modifiers
       if (item.selectedModifiers) {
         for (const mod of item.selectedModifiers) {
           const modName = removeVietnameseTones(mod.optionName);
-          addStr(` + ${modName}\n`);
+          addStr(`   + ${modName}\n`);
         }
       }
       if (item.itemNote) {
-        addStr(` * Ghi chu: ${removeVietnameseTones(item.itemNote)}\n`);
+        addStr(`   * Ghi chu: ${removeVietnameseTones(item.itemNote)}\n`);
       }
     }
 
