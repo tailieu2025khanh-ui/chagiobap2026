@@ -17,6 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
   RefreshCw,
+  Move,
 } from 'lucide-react';
 
 interface MenuManagerProps {
@@ -46,16 +47,18 @@ const PRESET_SAMPLE_IMAGES = [
 ];
 
 /**
- * Process Resized Image Canvas for Perfect Dish Frame Fitting
+ * Process Resized & Panned Image Canvas for Perfect Dish Frame Fitting
  */
 const processResizedImageCanvas = (
   imageUrl: string,
   zoomScale: number,
   fitMode: 'cover' | 'contain' | 'fill',
-  rotationDeg: number
+  rotationDeg: number,
+  offsetX: number,
+  offsetY: number
 ): Promise<string> => {
   return new Promise((resolve) => {
-    if (zoomScale === 100 && fitMode === 'cover' && rotationDeg === 0) {
+    if (zoomScale === 100 && fitMode === 'cover' && rotationDeg === 0 && offsetX === 0 && offsetY === 0) {
       return resolve(imageUrl);
     }
 
@@ -73,7 +76,10 @@ const processResizedImageCanvas = (
       ctx.fillRect(0, 0, canvasSize, canvasSize);
 
       ctx.save();
-      ctx.translate(canvasSize / 2, canvasSize / 2);
+      // Apply translation & offsets
+      const scaledOffsetX = (offsetX * canvasSize) / 160;
+      const scaledOffsetY = (offsetY * canvasSize) / 160;
+      ctx.translate(canvasSize / 2 + scaledOffsetX, canvasSize / 2 + scaledOffsetY);
       ctx.rotate((rotationDeg * Math.PI) / 180);
 
       const scale = zoomScale / 100;
@@ -125,11 +131,20 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
   const [isCreating, setIsCreating] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Image Fit & Zoom Customization States
+  // Image Fit, Zoom & Interactive Drag Resizer States
   const [imageZoomScale, setImageZoomScale] = useState<number>(100);
   const [imageFitMode, setImageFitMode] = useState<'cover' | 'contain' | 'fill'>('cover');
   const [imageRotation, setImageRotation] = useState<number>(0);
+  const [imageOffsetX, setImageOffsetX] = useState<number>(0);
+  const [imageOffsetY, setImageOffsetY] = useState<number>(0);
   const [isProcessingImage, setIsProcessingImage] = useState<boolean>(false);
+
+  // Interactive Mouse/Touch Drag States
+  const isDraggingRef = useRef(false);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const isResizingRef = useRef(false);
+  const resizeHandleRef = useRef<string | null>(null);
+  const startScaleRef = useRef(100);
 
   const [formData, setFormData] = useState<Partial<MenuItem>>({
     sku: '',
@@ -183,6 +198,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     setImageZoomScale(100);
     setImageFitMode('cover');
     setImageRotation(0);
+    setImageOffsetX(0);
+    setImageOffsetY(0);
     setIsCreating(true);
     setEditingItem(null);
   };
@@ -192,6 +209,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     setImageZoomScale(100);
     setImageFitMode('cover');
     setImageRotation(0);
+    setImageOffsetX(0);
+    setImageOffsetY(0);
     setEditingItem(item);
     setIsCreating(false);
   };
@@ -213,6 +232,9 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           ...prev,
           image: event.target?.result as string,
         }));
+        setImageZoomScale(100);
+        setImageOffsetX(0);
+        setImageOffsetY(0);
       }
     };
     reader.readAsDataURL(file);
@@ -240,6 +262,53 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     reader.readAsDataURL(file);
   };
 
+  // Interactive Mouse/Touch Drag Handlers for Position Panning & Corner Edge Resizing
+  const handleDragStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    if (isResizingRef.current) return;
+    isDraggingRef.current = true;
+    startPosRef.current = { x: clientX - imageOffsetX, y: clientY - imageOffsetY };
+  };
+
+  const handleHandleResizeStart = (e: React.MouseEvent | React.TouchEvent, handleType: string) => {
+    e.stopPropagation();
+    isResizingRef.current = true;
+    resizeHandleRef.current = handleType;
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+    startPosRef.current = { x: clientX, y: clientY };
+    startScaleRef.current = imageZoomScale;
+  };
+
+  const handleDragOrResizeMove = (e: React.MouseEvent | React.TouchEvent) => {
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+    if (isResizingRef.current) {
+      const deltaX = clientX - startPosRef.current.x;
+      const deltaY = clientY - startPosRef.current.y;
+      const dist = (deltaX + deltaY) / 2;
+      const newScale = Math.min(250, Math.max(40, startScaleRef.current + Math.round(dist)));
+      setImageZoomScale(newScale);
+      return;
+    }
+
+    if (isDraggingRef.current) {
+      const newX = Math.min(100, Math.max(-100, clientX - startPosRef.current.x));
+      const newY = Math.min(100, Math.max(-100, clientY - startPosRef.current.y));
+      setImageOffsetX(newX);
+      setImageOffsetY(newY);
+    }
+  };
+
+  const handleDragOrResizeEnd = () => {
+    isDraggingRef.current = false;
+    isResizingRef.current = false;
+    resizeHandleRef.current = null;
+  };
+
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.price) {
@@ -249,14 +318,16 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
     setIsProcessingImage(true);
 
-    // Process canvas scale & fit if zoom was adjusted
+    // Process canvas scale & fit if zoom / offsets were adjusted
     let finalImageUrl = formData.image || PRESET_SAMPLE_IMAGES[0].url;
     try {
       finalImageUrl = await processResizedImageCanvas(
         finalImageUrl,
         imageZoomScale,
         imageFitMode,
-        imageRotation
+        imageRotation,
+        imageOffsetX,
+        imageOffsetY
       );
     } catch {
       // Fallback if canvas process throws
@@ -301,10 +372,10 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
           <div>
             <h2 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
               <BookOpen className="w-5 h-5 text-[#5A5A40]" />
-              QUẢN LÝ THỰC ĐƠN & TÙY CHỈNH HÌNH ẢNH MÓN (CROP / ZOOM / SCALE)
+              QUẢN LÝ THỰC ĐƠN & KÉO THẢ CHỈNH ẢNH TO NHỎ TỪNG CẠNH (8 HANDLES RESIZER)
             </h2>
             <p className="text-xs text-[#808070] mt-0.5 font-medium">
-              Chả Giò Bắp Quảng Ngãi - Tùy chỉnh phóng to/thu nhỏ ảnh to nhỏ vừa khung, tải ảnh từ máy và lưu thực đơn.
+              Chả Giò Bắp Quảng Ngãi - Kéo trực tiếp từng cạnh/góc của ảnh để thu phóng to nhỏ vừa khung vuông thực đơn.
             </p>
           </div>
 
@@ -469,17 +540,21 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
         </div>
       </div>
 
-      {/* Add / Edit Modal with Enhanced Image Upload & Zoom/Scale Customizer */}
+      {/* Add / Edit Modal with Interactive Drag & 8-Handle Resizer Tool */}
       {(isCreating || editingItem) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
           <form
             onSubmit={handleSaveItem}
-            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-5 border border-[#E0E0D6]"
+            onMouseMove={handleDragOrResizeMove}
+            onMouseUp={handleDragOrResizeEnd}
+            onTouchMove={handleDragOrResizeMove}
+            onTouchEnd={handleDragOrResizeEnd}
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[92vh] overflow-y-auto p-6 space-y-5 border border-[#E0E0D6] select-none"
           >
             <div className="flex items-center justify-between border-b border-[#E0E0D6] pb-3">
               <h3 className="font-extrabold text-base text-[#1A1A1A] flex items-center gap-2">
                 <Camera className="w-5 h-5 text-[#5A5A40]" />
-                <span>{isCreating ? 'THÊM MÓN MỚI VÀO THỰC ĐƠN' : `THAY ĐỔI THÔNG TIN & HÌNH ẢNH: ${editingItem?.name}`}</span>
+                <span>{isCreating ? 'THÊM MÓN MỚI VÀO THỰC ĐƠN' : `KÉO THẢ CHỈNH ẢNH: ${editingItem?.name}`}</span>
               </h3>
               <button
                 type="button"
@@ -493,33 +568,90 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               </button>
             </div>
 
-            {/* IMAGE SELECTION & INTERACTIVE ZOOM/FIT CUSTOMIZER BOX */}
+            {/* IMAGE SELECTION & INTERACTIVE DRAG/HANDLE RESIZER BOX */}
             <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-[#E0E0D6] space-y-4">
               <div className="flex items-center justify-between">
                 <label className="font-bold text-xs text-[#1A1A1A] flex items-center gap-1.5">
-                  <ImageIcon className="w-4 h-4 text-[#5A5A40]" />
-                  <span>CẤU HÌNH & TÙY CHỈNH HÌNH ẢNH MÓN (*):</span>
+                  <Move className="w-4 h-4 text-[#5A5A40]" />
+                  <span>KÉO TRỰC TIẾP CÁC CẠNH/GÓC ĐỂ TÙY CHỈNH KÍCH THƯỚC:</span>
                 </label>
-                <span className="text-[11px] text-[#808070] font-medium">Tự động xẻ / chỉnh ảnh vừa khung</span>
+                <span className="text-[11px] text-[#5A5A40] font-bold">Kéo ảnh hoặc kéo 8 chấm tròn</span>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center gap-5">
-                {/* Live Interactive Preview Box with Zoom & Rotation */}
-                <div className="w-36 h-36 rounded-2xl overflow-hidden border-2 border-[#5A5A40] shadow-md shrink-0 bg-stone-100 relative group flex items-center justify-center">
+                {/* Live Interactive Preview Box with 8-Handle Resizer & Drag Panning */}
+                <div
+                  onMouseDown={handleDragStart}
+                  onTouchStart={handleDragStart}
+                  className="relative w-40 h-40 rounded-2xl border-2 border-[#5A5A40] shadow-md overflow-hidden bg-stone-100 cursor-grab active:cursor-grabbing flex items-center justify-center shrink-0"
+                >
                   <img
                     src={formData.image || PRESET_SAMPLE_IMAGES[0].url}
                     alt="Preview món"
                     style={{
-                      transform: `scale(${imageZoomScale / 100}) rotate(${imageRotation}deg)`,
+                      transform: `translate(${imageOffsetX}px, ${imageOffsetY}px) scale(${imageZoomScale / 100}) rotate(${imageRotation}deg)`,
                       objectFit: imageFitMode,
                     }}
-                    className="w-full h-full transition-transform duration-150"
+                    className="w-full h-full transition-transform duration-75 pointer-events-none"
                   />
+
+                  {/* Interactive Crop Boundary & 8 Resizing Handles */}
+                  <div className="absolute inset-0 border-2 border-dashed border-[#5A5A40]/70 pointer-events-none">
+                    {/* 4 Corner Handles */}
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'nw')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'nw')}
+                      className="absolute -top-1.5 -left-1.5 w-3.5 h-3.5 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-nwse-resize hover:scale-125 transition-transform"
+                      title="Kéo góc trên trái"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'ne')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'ne')}
+                      className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-nesw-resize hover:scale-125 transition-transform"
+                      title="Kéo góc trên phải"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'sw')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'sw')}
+                      className="absolute -bottom-1.5 -left-1.5 w-3.5 h-3.5 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-nesw-resize hover:scale-125 transition-transform"
+                      title="Kéo góc dưới trái"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'se')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'se')}
+                      className="absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-nwse-resize hover:scale-125 transition-transform"
+                      title="Kéo góc dưới phải"
+                    />
+
+                    {/* 4 Edge Handles */}
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'n')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'n')}
+                      className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-4 h-3 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-ns-resize hover:scale-125 transition-transform"
+                      title="Kéo cạnh trên"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 's')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 's')}
+                      className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-4 h-3 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-ns-resize hover:scale-125 transition-transform"
+                      title="Kéo cạnh dưới"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'w')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'w')}
+                      className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-3 h-4 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-ew-resize hover:scale-125 transition-transform"
+                      title="Kéo cạnh trái"
+                    />
+                    <div
+                      onMouseDown={(e) => handleHandleResizeStart(e, 'e')}
+                      onTouchStart={(e) => handleHandleResizeStart(e, 'e')}
+                      className="absolute top-1/2 -right-1.5 -translate-y-1/2 w-3 h-4 rounded-full bg-[#5A5A40] border-2 border-white shadow-md pointer-events-auto cursor-ew-resize hover:scale-125 transition-transform"
+                      title="Kéo cạnh phải"
+                    />
+                  </div>
+
                   <div className="absolute top-1.5 right-1.5 bg-black/60 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs">
                     {imageZoomScale}%
-                  </div>
-                  <div className="absolute inset-0 bg-black/30 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-[10px] font-bold">
-                    <span>Khung Vuông POS</span>
                   </div>
                 </div>
 
@@ -538,12 +670,12 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     />
                   </label>
 
-                  {/* Range Slider for Zooming Image Scale */}
+                  {/* Range Slider & Reset Controls */}
                   <div className="bg-white p-2.5 rounded-xl border border-[#E0E0D6] space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] font-bold text-[#1A1A1A]">
                       <span className="flex items-center gap-1">
                         <ZoomIn className="w-3.5 h-3.5 text-[#5A5A40]" />
-                        Thu nhỏ / Phóng to ảnh:
+                        Thu nhỏ / Phóng to (Scale %):
                       </span>
                       <span className="text-[#5A5A40] font-mono text-xs">{imageZoomScale}%</span>
                     </div>
@@ -551,7 +683,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setImageZoomScale(Math.max(50, imageZoomScale - 10))}
+                        onClick={() => setImageZoomScale(Math.max(40, imageZoomScale - 10))}
                         className="w-7 h-7 rounded-lg bg-[#FAF9F6] border border-[#E0E0D6] font-bold text-xs hover:bg-[#E0E0D6] flex items-center justify-center shrink-0"
                         title="Thu nhỏ"
                       >
@@ -560,8 +692,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                       <input
                         type="range"
-                        min="50"
-                        max="200"
+                        min="40"
+                        max="250"
                         step="5"
                         value={imageZoomScale}
                         onChange={(e) => setImageZoomScale(Number(e.target.value))}
@@ -570,7 +702,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => setImageZoomScale(Math.min(200, imageZoomScale + 10))}
+                        onClick={() => setImageZoomScale(Math.min(250, imageZoomScale + 10))}
                         className="w-7 h-7 rounded-lg bg-[#FAF9F6] border border-[#E0E0D6] font-bold text-xs hover:bg-[#E0E0D6] flex items-center justify-center shrink-0"
                         title="Phóng to"
                       >
@@ -583,19 +715,21 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                           setImageZoomScale(100);
                           setImageFitMode('cover');
                           setImageRotation(0);
+                          setImageOffsetX(0);
+                          setImageOffsetY(0);
                         }}
                         className="px-2 py-1 rounded-lg bg-[#FAF9F6] border border-[#E0E0D6] text-[10px] font-bold text-[#808070] hover:bg-[#E0E0D6] shrink-0 flex items-center gap-1"
-                        title="Reset 100%"
+                        title="Căn giữa & Reset"
                       >
                         <RefreshCw className="w-3 h-3" />
-                        <span>Đặt lại</span>
+                        <span>Reset</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Object Fit & Rotation Buttons */}
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[11px] font-bold text-[#1A1A1A]">Kiểu vừa khung:</span>
+                    <span className="text-[11px] font-bold text-[#1A1A1A]">Kiểu khung:</span>
                     <button
                       type="button"
                       onClick={() => setImageFitMode('cover')}
@@ -660,6 +794,8 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
                         setImageZoomScale(100);
                         setImageFitMode('cover');
                         setImageRotation(0);
+                        setImageOffsetX(0);
+                        setImageOffsetY(0);
                       }}
                       className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all border ${
                         formData.image === preset.url
