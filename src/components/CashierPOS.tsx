@@ -125,36 +125,50 @@ export const CashierPOS: React.FC<CashierPOSProps> = ({
   });
 
   // Handle Item Click (Open modal or direct add)
+  // Direct 1-Click Add To Order (No Popup Modals)
   const handleItemClick = (item: MenuItem) => {
     if (!item.isAvailable) return;
-    const hasModifiers = item.modifierGroupIds && item.modifierGroupIds.length > 0;
-
-    if (hasModifiers) {
-      setModalItem(item);
-      setEditingCartItem(null);
+    const existingIdx = cartItems.findIndex((ci) => ci.menuItem.id === item.id);
+    if (existingIdx >= 0) {
+      const updated = [...cartItems];
+      updated[existingIdx].quantity += 1;
+      updated[existingIdx].totalPrice =
+        updated[existingIdx].quantity * updated[existingIdx].unitPrice;
+      setCartItems(updated);
     } else {
-      const existingIdx = cartItems.findIndex(
-        (ci) => ci.menuItem.id === item.id && ci.selectedModifiers.length === 0
-      );
-      if (existingIdx >= 0) {
-        const updated = [...cartItems];
-        updated[existingIdx].quantity += 1;
+      const newItem: CartItem = {
+        cartItemId: `cart_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        menuItem: item,
+        quantity: 1,
+        selectedModifiers: [],
+        itemNote: '',
+        unitPrice: item.price,
+        totalPrice: item.price,
+      };
+      setCartItems([...cartItems, newItem]);
+    }
+  };
+
+  const handleDecreaseQuantity = (e: React.MouseEvent, item: MenuItem) => {
+    e.stopPropagation();
+    const existingIdx = cartItems.findIndex((ci) => ci.menuItem.id === item.id);
+    if (existingIdx >= 0) {
+      const updated = [...cartItems];
+      if (updated[existingIdx].quantity > 1) {
+        updated[existingIdx].quantity -= 1;
         updated[existingIdx].totalPrice =
           updated[existingIdx].quantity * updated[existingIdx].unitPrice;
         setCartItems(updated);
       } else {
-        const newItem: CartItem = {
-          cartItemId: `cart_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-          menuItem: item,
-          quantity: 1,
-          selectedModifiers: [],
-          itemNote: '',
-          unitPrice: item.price,
-          totalPrice: item.price,
-        };
-        setCartItems([...cartItems, newItem]);
+        // Remove item from cart if quantity reaches 0
+        setCartItems(cartItems.filter((ci) => ci.menuItem.id !== item.id));
       }
     }
+  };
+
+  const handleIncreaseQuantity = (e: React.MouseEvent, item: MenuItem) => {
+    e.stopPropagation();
+    handleItemClick(item);
   };
 
   const handleModalConfirm = (
@@ -305,16 +319,19 @@ export const CashierPOS: React.FC<CashierPOSProps> = ({
         {/* Menu Items Touch Grid */}
         <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3.5">
           {filteredItems.map((item) => {
-            const hasModifiers = item.modifierGroupIds && item.modifierGroupIds.length > 0;
+            const cartItemForThisMenu = cartItems.find((ci) => ci.menuItem.id === item.id);
+            const currentQty = cartItemForThisMenu ? cartItemForThisMenu.quantity : 0;
+
             return (
-              <button
+              <div
                 key={item.id}
                 onClick={() => handleItemClick(item)}
-                disabled={!item.isAvailable}
-                className={`group relative flex flex-col bg-white rounded-2xl border border-[#E0E0D6] p-3 text-left overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer ${
+                className={`group relative flex flex-col bg-white rounded-2xl border p-3 text-left overflow-hidden shadow-2xs hover:shadow-md transition-all cursor-pointer select-none ${
                   !item.isAvailable
                     ? 'opacity-60 bg-[#FAF9F6] border-[#E0E0D6] cursor-not-allowed'
-                    : 'hover:border-[#5A5A40] active:scale-[0.98]'
+                    : currentQty > 0
+                    ? 'border-[#5A5A40] bg-[#FAF9F0] ring-2 ring-[#5A5A40]/30'
+                    : 'border-[#E0E0D6] hover:border-[#5A5A40]'
                 }`}
               >
                 {/* Image & Badges */}
@@ -330,9 +347,9 @@ export const CashierPOS: React.FC<CashierPOSProps> = ({
                       HOT
                     </span>
                   )}
-                  {hasModifiers && (
-                    <span className="absolute bottom-2 right-2 bg-[#2C2C24]/80 backdrop-blur-xs text-white font-bold text-[9px] px-1.5 py-0.5 rounded shadow-xs">
-                      + Tùy chọn
+                  {currentQty > 0 && (
+                    <span className="absolute top-2 right-2 bg-rose-600 text-white font-extrabold text-xs px-2.5 py-0.5 rounded-full shadow-md">
+                      {currentQty}
                     </span>
                   )}
                   {!item.isAvailable && (
@@ -356,16 +373,44 @@ export const CashierPOS: React.FC<CashierPOSProps> = ({
                     </h4>
                   </div>
 
-                  <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-[#F0F0E8]">
-                    <span className="font-bold text-[#5A5A40] text-xs sm:text-sm">
-                      {item.price.toLocaleString('vi-VN')}đ
-                    </span>
-                    <span className="w-6 h-6 rounded-lg bg-[#F5F5F0] group-hover:bg-[#5A5A40] text-[#5A5A40] group-hover:text-white flex items-center justify-center transition-colors">
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                    </span>
-                  </div>
+                  {/* Price & Inline Stepper Controls (+ / -) */}
+                  {currentQty > 0 ? (
+                    <div
+                      className="mt-2.5 flex items-center justify-between p-1 bg-[#5A5A40] text-white rounded-xl shadow-xs"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => handleDecreaseQuantity(e, item)}
+                        className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/40 active:scale-95 text-white flex items-center justify-center font-bold text-sm transition-all"
+                        title="Giảm 1"
+                      >
+                        <Minus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                      <span className="font-extrabold text-sm px-2 text-amber-300">
+                        {currentQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleIncreaseQuantity(e, item)}
+                        className="w-7 h-7 rounded-lg bg-white/20 hover:bg-white/40 active:scale-95 text-white flex items-center justify-center font-bold text-sm transition-all"
+                        title="Tăng 1"
+                      >
+                        <Plus className="w-4 h-4 stroke-[3]" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-2 flex items-center justify-between pt-1.5 border-t border-[#F0F0E8]">
+                      <span className="font-bold text-[#5A5A40] text-xs sm:text-sm">
+                        {item.price.toLocaleString('vi-VN')}đ
+                      </span>
+                      <span className="w-7 h-7 rounded-lg bg-[#F5F5F0] group-hover:bg-[#5A5A40] text-[#5A5A40] group-hover:text-white flex items-center justify-center transition-colors shadow-2xs">
+                        <Plus className="w-4 h-4 stroke-[2.5]" />
+                      </span>
+                    </div>
+                  )}
                 </div>
-              </button>
+              </div>
             );
           })}
 
