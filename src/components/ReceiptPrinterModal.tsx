@@ -225,25 +225,29 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                   </thead>
                   <tbody className="divide-y divide-[#E0E0D6]">
                     {order.items.map((item, idx) => (
-                      <tr key={idx} className="align-top">
-                        <td className="py-1 pr-1 font-medium">
-                          {item.menuItem?.name || 'Món ăn'}
+                      <tr key={idx} className="align-top border-b border-stone-200">
+                        <td className="py-2 pr-1">
+                          <div className="font-extrabold text-sm sm:text-base text-black uppercase leading-tight">
+                            {item.menuItem?.name || 'Món ăn'}
+                          </div>
                           {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                            <div className="text-[10px] text-[#808070] pl-1 font-normal">
+                            <div className="text-[10px] text-[#666] pl-1 font-medium mt-0.5">
                               {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
                             </div>
                           )}
                           {item.itemNote && (
-                            <div className="text-[10px] text-amber-700 italic pl-1">
+                            <div className="text-[10px] text-amber-800 italic pl-1 mt-0.5">
                               * {item.itemNote}
                             </div>
                           )}
                         </td>
-                        <td className="py-1 px-1 text-center font-bold">{item.quantity}</td>
-                        <td className="py-1 px-1 text-right text-[#808070]">
+                        <td className="py-2 px-1 text-center font-extrabold text-sm sm:text-base text-black">
+                          x{item.quantity}
+                        </td>
+                        <td className="py-2 px-1 text-right text-xs text-[#666]">
                           {item.unitPrice.toLocaleString('vi-VN')}
                         </td>
-                        <td className="py-1 pl-1 text-right font-bold">
+                        <td className="py-2 pl-1 text-right font-extrabold text-sm text-black">
                           {item.totalPrice.toLocaleString('vi-VN')}
                         </td>
                       </tr>
