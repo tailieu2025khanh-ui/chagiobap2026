@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { MenuItem, CategoryType, ModifierGroup } from '../types/pos';
+import { INITIAL_MENU } from '../data/initialData';
 import {
   BookOpen,
   Plus,
@@ -379,13 +380,30 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             </p>
           </div>
 
-          <button
-            onClick={handleOpenCreate}
-            className="px-4 py-2.5 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            <span>THÊM MÓN MỚI</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (confirm('Bạn có chắc chắn muốn khôi phục và đồng bộ thực đơn chuẩn "CHẢ GIÒ BẮP QUẢNG NGÃI" trên tất cả các thiết bị?')) {
+                  localStorage.setItem('fnb_menu_version', 'v4_chagiobap_quangngai');
+                  setMenuItems(INITIAL_MENU);
+                  alert('Đã đồng bộ thực đơn mới nhất thành công!');
+                }
+              }}
+              className="px-3.5 py-2.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-900 font-bold text-xs shadow-xs transition-all flex items-center gap-1.5"
+              title="Đồng bộ lại thực đơn chuẩn CHẢ GIÒ BẮP QUẢNG NGÃI"
+            >
+              <RefreshCw className="w-4 h-4 text-amber-700" />
+              <span>ĐỒNG BỘ THỰC ĐƠN MỚI</span>
+            </button>
+
+            <button
+              onClick={handleOpenCreate}
+              className="px-4 py-2.5 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>THÊM MÓN MỚI</span>
+            </button>
+          </div>
         </div>
 
         {/* Filter & Search Bar */}
