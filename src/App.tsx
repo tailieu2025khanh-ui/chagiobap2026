@@ -79,9 +79,11 @@ export default function App() {
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
-  // Auto-migrate store config & update menu items to CHẢ GIÒ BẮP QUẢNG NGÃI
+  // Auto-migrate & Synchronize Store Config & Menu Items across all devices/browsers to CHẢ GIÒ BẮP QUẢNG NGÃI
   useEffect(() => {
     initUsbAutoDetect();
+
+    // 1. Force update Store Config
     setStoreConfig((prev) => ({
       ...prev,
       storeName: 'CHẢ GIÒ BẮP QUẢNG NGÃI',
@@ -90,14 +92,48 @@ export default function App() {
       printerType: prev.printerType || 'usb',
     }));
 
-    // Auto-migrate menu if legacy items present
+    // 2. Strict menu migration: replace any old stored coffee/noodle items with CHẢ GIÒ BẮP QUẢNG NGÃI
+    const CURRENT_VERSION = 'v4_chagiobap_quangngai';
+    const storedVersion = localStorage.getItem('fnb_menu_version');
+
     setMenuItems((prevItems) => {
-      const hasOldItems = prevItems.some((i) => i.name.includes('Cà Phê') || i.name.includes('Phở Bò'));
-      if (hasOldItems || prevItems.length === 0) {
+      const hasChaGioBap = prevItems.some((i) => i.name.includes('Chả giò bắp'));
+      const hasLegacyItems = prevItems.some((i) =>
+        i.name.includes('Cà Phê') ||
+        i.name.includes('Phở Bò') ||
+        i.name.includes('Bún Chả') ||
+        i.name.includes('Mì Quảng') ||
+        i.name.includes('Bánh Mì Thịt Nướng') ||
+        i.name.includes('Khoai Tây Chiên')
+      );
+
+      if (storedVersion !== CURRENT_VERSION || !hasChaGioBap || hasLegacyItems || prevItems.length === 0) {
+        localStorage.setItem('fnb_menu_version', CURRENT_VERSION);
         return INITIAL_MENU;
       }
       return prevItems;
     });
+
+    // 3. Cross-Tab Real-time Synchronization Listener
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'fnb_menu_items' && e.newValue) {
+        try {
+          const updatedMenu = JSON.parse(e.newValue);
+          setMenuItems(updatedMenu);
+        } catch {}
+      }
+      if (e.key === 'fnb_store_config' && e.newValue) {
+        try {
+          const updatedConfig = JSON.parse(e.newValue);
+          setStoreConfig(updatedConfig);
+        } catch {}
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, []);
 
   // Sync selected table's order if exists
