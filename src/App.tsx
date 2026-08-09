@@ -79,15 +79,25 @@ export default function App() {
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
 
-  // Auto-migrate legacy store config & init Plug and Play USB Printer Auto Detect for Rongta RP335UL
+  // Auto-migrate store config & update menu items to CHẢ GIÒ BẮP QUẢNG NGÃI
   useEffect(() => {
     initUsbAutoDetect();
     setStoreConfig((prev) => ({
       ...prev,
-      storeName: !prev.storeName || prev.storeName.includes('SAIGON COFFEE') ? 'CHA CHI BAP' : prev.storeName,
+      storeName: 'CHẢ GIÒ BẮP QUẢNG NGÃI',
+      accountHolder: 'CHA GIO BAP QUANG NGAI',
       printCopies: prev.printCopies === 1 ? 1 : 2,
       printerType: prev.printerType || 'usb',
     }));
+
+    // Auto-migrate menu if legacy items present
+    setMenuItems((prevItems) => {
+      const hasOldItems = prevItems.some((i) => i.name.includes('Cà Phê') || i.name.includes('Phở Bò'));
+      if (hasOldItems || prevItems.length === 0) {
+        return INITIAL_MENU;
+      }
+      return prevItems;
+    });
   }, []);
 
   // Sync selected table's order if exists
