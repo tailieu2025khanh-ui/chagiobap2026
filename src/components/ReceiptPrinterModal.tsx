@@ -201,9 +201,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                 <table className="w-full text-left mb-4 border-collapse border-2 border-black text-xs font-serif">
                   <thead>
                     <tr className="bg-stone-100 border-b-2 border-black font-black text-black">
-                      <th className="py-2 px-2.5 border-r-2 border-black font-black text-black">Ten mon</th>
+                      <th className="py-2 px-2.5 border-r-2 border-black font-black text-black">Tên món</th>
                       <th className="py-2 px-1 border-r-2 border-black text-center font-black text-black w-14">SL</th>
-                      <th className="py-2 px-2 border-black text-right font-black text-black w-28">T.Tien</th>
+                      <th className="py-2 px-2 border-black text-right font-black text-black w-28">T.Tiền</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -260,9 +260,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </div>
                   )}
 
-                  <div className="flex justify-between text-[13px] font-bold pt-1 text-black">
-                    <span className="font-bold text-[13px]">Tổng cộng:</span>
-                    <span className="font-bold text-[13px]">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
+                  <div className="flex justify-between items-baseline text-[15px] font-extrabold pt-1.5 text-black border-t border-black mt-1">
+                    <span className="font-extrabold text-[15px]">Tổng cộng:</span>
+                    <span className="font-extrabold text-[15px]">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
 
