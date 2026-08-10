@@ -96,22 +96,15 @@ export default function App() {
       printerType: prev.printerType || 'usb',
     }));
 
-    // 2. Strict menu migration: replace any old stored coffee/noodle items with CHẢ GIÒ BẮP QUẢNG NGÃI
-    const CURRENT_VERSION = 'v4_chagiobap_quangngai';
+    // 2. Strict menu migration to exact 26 PDF items
+    const CURRENT_VERSION = 'v5_pdf_quangngai';
     const storedVersion = localStorage.getItem('fnb_menu_version');
 
     setMenuItems((prevItems) => {
-      const hasChaGioBap = prevItems.some((i) => i.name.includes('Chả giò bắp'));
-      const hasLegacyItems = prevItems.some((i) =>
-        i.name.includes('Cà Phê') ||
-        i.name.includes('Phở Bò') ||
-        i.name.includes('Bún Chả') ||
-        i.name.includes('Mì Quảng') ||
-        i.name.includes('Bánh Mì Thịt Nướng') ||
-        i.name.includes('Khoai Tây Chiên')
-      );
+      const hasThapCam = prevItems.some((i) => i.name === 'Thập cẩm');
+      const hasRauCau = prevItems.some((i) => i.name === 'Rau câu');
 
-      if (storedVersion !== CURRENT_VERSION || !hasChaGioBap || hasLegacyItems || prevItems.length === 0) {
+      if (storedVersion !== CURRENT_VERSION || !hasThapCam || !hasRauCau || prevItems.length !== 26) {
         localStorage.setItem('fnb_menu_version', CURRENT_VERSION);
         return INITIAL_MENU;
       }
