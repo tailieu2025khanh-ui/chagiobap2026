@@ -142,17 +142,17 @@ export default function App() {
       printerType: prev.printerType || 'usb',
     }));
 
-    // 2. Strict menu migration to exact 26 PDF items
-    const CURRENT_VERSION = 'v5_pdf_quangngai';
+    // 2. Menu migration helper (Only initialize once if empty, preserve all user edits)
+    const CURRENT_VERSION = 'v6_pdf_quangngai_preserve_user_edits';
     const storedVersion = localStorage.getItem('fnb_menu_version');
 
     setMenuItems((prevItems) => {
-      const hasThapCam = prevItems.some((i) => i.name === 'Thập cẩm');
-      const hasRauCau = prevItems.some((i) => i.name === 'Rau câu');
-
-      if (storedVersion !== CURRENT_VERSION || !hasThapCam || !hasRauCau || prevItems.length !== 26) {
+      if (!prevItems || prevItems.length === 0) {
         localStorage.setItem('fnb_menu_version', CURRENT_VERSION);
         return INITIAL_MENU;
+      }
+      if (storedVersion !== CURRENT_VERSION) {
+        localStorage.setItem('fnb_menu_version', CURRENT_VERSION);
       }
       return prevItems;
     });
