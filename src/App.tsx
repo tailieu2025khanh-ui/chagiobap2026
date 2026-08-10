@@ -105,8 +105,21 @@ export default function App() {
   const [modifierGroups, setModifierGroups] = useLocalStorage<ModifierGroup[]>('fnb_modifier_groups', INITIAL_MODIFIERS);
   const [tables, setTables] = useLocalStorage<Table[]>('fnb_tables', INITIAL_TABLES);
   const [orders, setOrders] = useLocalStorage<Order[]>('fnb_orders', INITIAL_PAST_ORDERS);
+  const [cumulativeRevenue, setCumulativeRevenue] = useLocalStorage<number>('fnb_cumulative_total_revenue', 0);
   const [shift, setShift] = useLocalStorage<Shift>('fnb_shift', INITIAL_SHIFT);
   const [staffList, setStaffList] = useLocalStorage<StaffMember[]>('fnb_staff_list', INITIAL_STAFF);
+
+  // Auto-sync cumulativeRevenue from paid orders if zero
+  useEffect(() => {
+    if (cumulativeRevenue === 0 && orders && orders.length > 0) {
+      const initialPaidSum = orders
+        .filter((o) => o.paymentStatus === 'paid')
+        .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+      if (initialPaidSum > 0) {
+        setCumulativeRevenue(initialPaidSum);
+      }
+    }
+  }, [orders]);
 
   // Cashier Cart & Active Order State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -405,8 +418,9 @@ export default function App() {
       );
     }
 
-    // Update Shift Revenue
+    // Update Shift Revenue & Persistent Cumulative Revenue (Bảo toàn vĩnh viễn khi tắt app/máy)
     const rev = completedOrder.grandTotal;
+    setCumulativeRevenue((prev) => (prev || 0) + rev);
     setShift((prev) => ({
       ...prev,
       totalRevenue: prev.totalRevenue + rev,
@@ -513,7 +527,13 @@ export default function App() {
         )}
 
         {activeTab === 'reports' && (
-          <ReportsAnalytics orders={orders} setOrders={setOrders} menuItems={menuItems} />
+          <ReportsAnalytics
+            orders={orders}
+            setOrders={setOrders}
+            menuItems={menuItems}
+            cumulativeRevenue={cumulativeRevenue}
+            setCumulativeRevenue={setCumulativeRevenue}
+          />
         )}
 
         {activeTab === 'menu' && (
