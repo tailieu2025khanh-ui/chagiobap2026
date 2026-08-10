@@ -320,40 +320,44 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     // ESC a 0 Left Alignment
     addBytes(0x1b, 0x61, 0x00);
 
-    // Table items header
+    // Table items header (No D.Gia unit price column)
     addBytes(0x1b, 0x45, 0x01); // Bold ON
     if (is58mm) {
-      addStr('Ten Mon         SL   T.Tien\n');
+      addStr('Ten Mon          SL    T.Tien\n');
     } else {
-      addStr('Ten Mon                  SL   D.Gia     T.Tien\n');
+      addStr('Ten Mon                  SL        T.Tien\n');
     }
     addBytes(0x1b, 0x45, 0x00); // Bold OFF
     addStr('-'.repeat(maxChars) + '\n');
 
-    // Items - Dish Name & Quantity in Large Bold Font (Same as bottom total row)
+    // Font size configuration based on user printerFontSize setting
+    const fontSizeByte =
+      storeConfig.printerFontSize === 'xlarge'
+        ? 0x11 // Double Height & Width
+        : storeConfig.printerFontSize === 'normal'
+        ? 0x00 // Normal Size
+        : 0x01; // Double Height (Default Large)
+
+    // Items - Dish Name & Quantity in Large Bold Font
     for (const item of order.items) {
       const name = removeVietnameseTones(item.menuItem?.name || 'Mon ăn');
       const qtyStr = `${item.quantity}`;
-      const priceStr = item.unitPrice.toLocaleString('vi-VN');
       const totalStr = item.totalPrice.toLocaleString('vi-VN');
 
-      // Double Height + Bold ON for Dish Name and Quantity (Large Font as requested!)
       addBytes(0x1b, 0x45, 0x01); // Bold ON
-      addBytes(0x1d, 0x21, 0x01); // Double Height Font ON (Equal to bottom total row)
+      if (fontSizeByte > 0) {
+        addBytes(0x1d, 0x21, fontSizeByte); // Dynamic Font Size
+      }
 
       if (is58mm) {
         addStr(`${name.toUpperCase()}\n`);
-        addStr(`  SL: ${qtyStr} | TT: ${totalStr} d\n`);
+        addStr(`  SL: ${qtyStr}  TT: ${totalStr} d\n`);
       } else {
-        addStr(`${name.toUpperCase()}  (SL: ${qtyStr})\n`);
+        addStr(`${name.toUpperCase()}  SL: ${qtyStr}  -> ${totalStr} d\n`);
       }
 
-      addBytes(0x1d, 0x21, 0x00); // Double Height OFF
-      addBytes(0x1b, 0x45, 0x00); // Bold OFF
-
-      if (!is58mm) {
-        addStr(`  Don gia: ${priceStr} d  -> Thanh tien: ${totalStr} d\n`);
-      }
+      addBytes(0x1d, 0x21, 0x00); // Reset Font Size
+      addBytes(0x1b, 0x45, 0x00); // Reset Bold
 
       // Modifiers
       if (item.selectedModifiers) {
