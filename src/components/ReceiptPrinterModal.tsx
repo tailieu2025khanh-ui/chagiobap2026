@@ -215,49 +215,42 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#E0E0D6]">
-                    {order.items.map((item, idx) => (
-                      <tr key={idx} className="align-top border-b border-stone-200">
-                        <td className="py-2 pr-1">
-                          <div className={`font-extrabold text-black uppercase leading-tight ${
-                            storeConfig.printerFontSize === 'xlarge'
-                              ? 'text-base sm:text-lg'
-                              : storeConfig.printerFontSize === 'normal'
-                              ? 'text-xs'
-                              : 'text-sm sm:text-base'
-                          }`}>
-                            {item.menuItem?.name || 'Món ăn'}
-                          </div>
-                          {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                            <div className="text-[10px] text-[#666] pl-1 font-medium mt-0.5">
-                              {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
+                    {order.items.map((item, idx) => {
+                      const itemFontSizeClass =
+                        storeConfig.printerFontSize === 'xlarge'
+                          ? 'text-base sm:text-lg'
+                          : storeConfig.printerFontSize === 'large'
+                          ? 'text-sm sm:text-base'
+                          : storeConfig.printerFontSize === 'normal'
+                          ? 'text-xs'
+                          : 'text-[13px]';
+
+                      return (
+                        <tr key={idx} className="align-top border-b border-stone-200">
+                          <td className="py-1.5 pr-1">
+                            <div className={`font-bold text-black uppercase leading-snug ${itemFontSizeClass}`}>
+                              {item.menuItem?.name || 'Món ăn'}
                             </div>
-                          )}
-                          {item.itemNote && (
-                            <div className="text-[10px] text-amber-800 italic pl-1 mt-0.5">
-                              * {item.itemNote}
-                            </div>
-                          )}
-                        </td>
-                        <td className={`py-2 px-1 text-center font-extrabold text-black ${
-                          storeConfig.printerFontSize === 'xlarge'
-                            ? 'text-base sm:text-lg'
-                            : storeConfig.printerFontSize === 'normal'
-                            ? 'text-xs'
-                            : 'text-sm sm:text-base'
-                        }`}>
-                          {item.quantity}
-                        </td>
-                        <td className={`py-2 pl-1 text-right font-extrabold text-black ${
-                          storeConfig.printerFontSize === 'xlarge'
-                            ? 'text-base sm:text-lg'
-                            : storeConfig.printerFontSize === 'normal'
-                            ? 'text-xs'
-                            : 'text-sm sm:text-base'
-                        }`}>
-                          {item.totalPrice.toLocaleString('vi-VN')}
-                        </td>
-                      </tr>
-                    ))}
+                            {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                              <div className="text-[10px] text-[#666] pl-1 font-medium mt-0.5">
+                                {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
+                              </div>
+                            )}
+                            {item.itemNote && (
+                              <div className="text-[10px] text-amber-800 italic pl-1 mt-0.5">
+                                * {item.itemNote}
+                              </div>
+                            )}
+                          </td>
+                          <td className={`py-1.5 px-1 text-center font-bold text-black ${itemFontSizeClass}`}>
+                            {item.quantity}
+                          </td>
+                          <td className={`py-1.5 pl-1 text-right font-bold text-black ${itemFontSizeClass}`}>
+                            {item.totalPrice.toLocaleString('vi-VN')}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
