@@ -9,10 +9,14 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(process.cwd(), '.'),
+        '@src': path.resolve(process.cwd(), 'src'),
       },
     },
+    build: {
+      outDir: 'dist',
+      sourcemap: false,
+    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
       hmr: process.env.DISABLE_HMR !== 'true',
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
