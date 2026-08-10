@@ -64,9 +64,10 @@ export const StaffManager: React.FC<StaffManagerProps> = ({ staffList, setStaffL
     }
 
     if (editingStaff) {
+      const editingId = editingStaff.id;
       setStaffList((prev) =>
         prev.map((s) =>
-          s.id === editingStaff.id
+          s.id === editingId
             ? { ...s, code: formData.code, name: formData.name, role: formData.role, phone: formData.phone, status: formData.status }
             : s
         )
@@ -86,11 +87,11 @@ export const StaffManager: React.FC<StaffManagerProps> = ({ staffList, setStaffL
     setIsModalOpen(false);
   };
 
-  const filteredStaff = staffList.filter(
+  const filteredStaff = (staffList || []).filter(
     (s) =>
-      s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.phone.includes(searchQuery)
+      (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (s.phone || '').includes(searchQuery)
   );
 
   const getRoleBadge = (role: string) => {
