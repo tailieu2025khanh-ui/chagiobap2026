@@ -33,12 +33,20 @@ interface ReportsAnalyticsProps {
   orders: Order[];
   menuItems: MenuItem[];
   setOrders?: React.Dispatch<React.SetStateAction<Order[]>>;
+  cumulativeRevenue?: number;
+  setCumulativeRevenue?: React.Dispatch<React.SetStateAction<number>>;
+  dailyRevenueMap?: Record<string, number>;
+  setDailyRevenueMap?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 }
 
 export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
   orders,
   menuItems,
   setOrders,
+  cumulativeRevenue = 0,
+  setCumulativeRevenue,
+  dailyRevenueMap = {},
+  setDailyRevenueMap,
 }) => {
   const todayStr = new Date().toISOString().split('T')[0];
   const currentMonthStr = todayStr.substring(0, 7);
@@ -72,7 +80,16 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
     return true;
   });
 
-  const totalRevenue = filteredOrders.reduce((sum, o) => sum + o.grandTotal, 0);
+  // Permanent All-Time & Today Revenue Calculations (Lưu giống ca làm việc)
+  const allTimePaidOrders = (orders || []).filter((o) => o.paymentStatus === 'paid');
+  const sumFromOrders = allTimePaidOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+  const displayAllTimeRevenue = Math.max(cumulativeRevenue || 0, sumFromOrders);
+
+  const todayPaidOrders = (orders || []).filter((o) => o.paymentStatus === 'paid' && (o.createdAt || '').split('T')[0] === todayStr);
+  const sumTodayFromOrders = todayPaidOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+  const displayTodayRevenue = Math.max(dailyRevenueMap?.[todayStr] || 0, sumTodayFromOrders);
+
+  const totalRevenue = filteredOrders.reduce((sum, o) => sum + (o.grandTotal || 0), 0);
   const totalOrdersCount = filteredOrders.length;
   const averageOrderValue = totalOrdersCount > 0 ? Math.round(totalRevenue / totalOrdersCount) : 0;
 
@@ -84,14 +101,14 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
   const itemSalesMap: Record<string, { id: string; name: string; category: string; volume: number; revenue: number }> = {};
 
   filteredOrders.forEach((o) => {
-    o.items.forEach((item) => {
+    (o.items || []).forEach((item) => {
       const cat = item.menuItem?.category || 'mon-an';
       if (cat === 'mon-an') {
-        foodRevenue += item.totalPrice;
-        foodVolume += item.quantity;
+        foodRevenue += (item.totalPrice || 0);
+        foodVolume += (item.quantity || 0);
       } else if (cat === 'nuoc-uong') {
-        drinkRevenue += item.totalPrice;
-        drinkVolume += item.quantity;
+        drinkRevenue += (item.totalPrice || 0);
+        drinkVolume += (item.quantity || 0);
       }
 
       const itemId = item.menuItem?.id || item.cartItemId;
@@ -105,8 +122,8 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
           revenue: 0,
         };
       }
-      itemSalesMap[itemId].volume += item.quantity;
-      itemSalesMap[itemId].revenue += item.totalPrice;
+      itemSalesMap[itemId].volume += (item.quantity || 0);
+      itemSalesMap[itemId].revenue += (item.totalPrice || 0);
     });
   });
 
@@ -119,28 +136,57 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
   ];
   const COLORS = ['#5A5A40', '#808070'];
 
-  // Dynamic Chart Data based on timeRange
+  // Construct chart data dynamically
   const chartDataMap: Record<string, number> = {};
+
   if (timeRange === 'today') {
-    ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00', '20:00', '22:00'].forEach((t) => (chartDataMap[t] = 0));
+    for (let h = 6; h <= 22; h += 2) {
+      const hourLabel = `${h}:00`;
+      chartDataMap[hourLabel] = 0;
+    }
     filteredOrders.forEach((o) => {
       const hour = new Date(o.createdAt).getHours();
-      const slot = `${hour.toString().padStart(2, '0')}:00`;
-      chartDataMap[slot] = (chartDataMap[slot] || 0) + o.grandTotal;
+      const bucketHour = Math.floor(hour / 2) * 2;
+      const hourLabel = `${bucketHour}:00`;
+      if (chartDataMap[hourLabel] !== undefined) {
+        chartDataMap[hourLabel] += (o.grandTotal || 0);
+      }
     });
   } else if (timeRange === '7days') {
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(new Date(selectedDate).getTime() - i * 86400000);
-      const dateKey = d.toISOString().split('T')[0].substring(5);
-      chartDataMap[dateKey] = 0;
+      const d = new Date(selectedDate);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const displayLabel = `${d.getDate()}/${d.getMonth() + 1}`;
+      chartDataMap[displayLabel] = 0;
+
+      filteredOrders.forEach((o) => {
+        if ((o.createdAt || '').split('T')[0] === dateStr) {
+          chartDataMap[displayLabel] += (o.grandTotal || 0);
+        }
+      });
     }
+  } else if (timeRange === 'month') {
+    const daysInMonth = new Date(
+      parseInt(selectedMonth.split('-')[0]),
+      parseInt(selectedMonth.split('-')[1]),
+      0
+    ).getDate();
+
+    for (let day = 1; day <= daysInMonth; day += 3) {
+      const dayLabel = `Ngày ${day}`;
+      chartDataMap[dayLabel] = 0;
+    }
+
     filteredOrders.forEach((o) => {
-      const dateKey = o.createdAt.split('T')[0].substring(5);
-      if (chartDataMap[dateKey] !== undefined) {
-        chartDataMap[dateKey] += o.grandTotal;
+      const day = new Date(o.createdAt).getDate();
+      const bucketDay = Math.floor((day - 1) / 3) * 3 + 1;
+      const dayLabel = `Ngày ${bucketDay}`;
+      if (chartDataMap[dayLabel] !== undefined) {
+        chartDataMap[dayLabel] += (o.grandTotal || 0);
       }
     });
-  } else {
+  } else if (timeRange === 'year') {
     for (let m = 1; m <= 12; m++) {
       const mKey = `Tháng ${m}`;
       chartDataMap[mKey] = 0;
@@ -149,7 +195,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
       const month = new Date(o.createdAt).getMonth() + 1;
       const mKey = `Tháng ${month}`;
       if (chartDataMap[mKey] !== undefined) {
-        chartDataMap[mKey] += o.grandTotal;
+        chartDataMap[mKey] += (o.grandTotal || 0);
       }
     });
   }
@@ -159,22 +205,35 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
     'Doanh Thu (đ)': revenue,
   }));
 
-  // Clear Revenue Handlers
+  // Clear Revenue Handlers (Protect Today's Revenue)
   const handleClearMonthlyRevenue = () => {
     if (!setOrders) return;
-    const confirmMsg = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu doanh thu của Tháng ${selectedMonth} không?\nThao tác này sẽ xóa tất cả các đơn hàng thuộc Tháng ${selectedMonth}!`;
+    const confirmMsg = `⚠️ CẢNH BÁO: Bạn có chắc chắn muốn xóa dữ liệu doanh thu cũ của Tháng ${selectedMonth} không?\n(Lưu ý: Doanh thu của ngày HÔM NAY sẽ luôn được bảo vệ an toàn trên app!)`;
     if (confirm(confirmMsg)) {
-      setOrders((prev) => prev.filter((o) => o.createdAt.substring(0, 7) !== selectedMonth));
-      alert(`Đã xóa sạch doanh thu của Tháng ${selectedMonth}!`);
+      setOrders((prev) =>
+        (prev || []).filter((o) => (o.createdAt || '').split('T')[0] === todayStr || (o.createdAt || '').substring(0, 7) !== selectedMonth)
+      );
+      alert(`Đã dọn dẹp doanh thu cũ của Tháng ${selectedMonth}. Doanh thu hôm nay vẫn bảo toàn 100%!`);
     }
   };
 
   const handleClearYearlyRevenue = () => {
     if (!setOrders) return;
-    const confirmMsg = `🚨 XÁC NHẬN NGUY HIỂM: Bạn có chắc chắn muốn XÓA SẠCH TOÀN BỘ doanh thu của Năm ${selectedYear} không?\nToàn bộ đơn hàng thuộc Năm ${selectedYear} sẽ bị xóa vĩnh viễn!`;
+    const confirmMsg = `🚨 XÁC NHẬN NGUY HIỂM: Bạn có chắc chắn muốn xóa dữ liệu doanh thu cũ của Năm ${selectedYear} không?\n(Lưu ý: Doanh thu của ngày HÔM NAY sẽ luôn được bảo vệ an toàn trên app!)`;
     if (confirm(confirmMsg)) {
-      setOrders((prev) => prev.filter((o) => o.createdAt.substring(0, 4) !== selectedYear));
-      alert(`Đã xóa sạch doanh thu của Năm ${selectedYear}!`);
+      setOrders((prev) =>
+        (prev || []).filter((o) => (o.createdAt || '').split('T')[0] === todayStr || (o.createdAt || '').substring(0, 4) !== selectedYear)
+      );
+      alert(`Đã dọn dẹp doanh thu cũ của Năm ${selectedYear}. Doanh thu hôm nay vẫn bảo toàn 100%!`);
+    }
+  };
+
+  const handleClearCumulativeRevenue = () => {
+    if (!setCumulativeRevenue) return;
+    const confirmMsg = `🚨 XÁC NHẬN NGUY HIỂM: Bạn có chắc chắn muốn XÓA TỔNG DOANH THU LŨY KẾ không?\n(Số liệu doanh thu lũy kế sẽ reset về 0đ!)`;
+    if (confirm(confirmMsg)) {
+      setCumulativeRevenue(0);
+      alert('Đã xóa tổng doanh thu tích lũy thành công!');
     }
   };
 
@@ -203,7 +262,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="bg-transparent font-bold text-[#1A1A1A] focus:outline-hidden cursor-pointer"
+                  className="bg-transparent font-bold text-[#1A1A1A] focus:outline-none cursor-pointer"
                 />
               </div>
             )}
@@ -216,7 +275,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(e.target.value)}
-                  className="bg-transparent font-bold text-[#1A1A1A] focus:outline-hidden cursor-pointer"
+                  className="bg-transparent font-bold text-[#1A1A1A] focus:outline-none cursor-pointer"
                 />
               </div>
             )}
@@ -231,7 +290,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
                   max="2030"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-16 bg-transparent font-bold text-[#1A1A1A] focus:outline-hidden cursor-pointer"
+                  className="w-16 bg-transparent font-bold text-[#1A1A1A] focus:outline-none cursor-pointer"
                 />
               </div>
             )}
@@ -291,20 +350,52 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
           </div>
         </div>
 
-        {/* Top KPI Cards Grid */}
+        {/* Permanent Top KPI Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-2xl border-2 border-[#5A5A40] shadow-md flex items-center justify-between">
+            <div>
+              <p className="text-xs font-extrabold text-[#5A5A40] uppercase tracking-wide">TỔNG DOANH THU LŨY KẾ</p>
+              <p className="text-2xl font-black text-[#5A5A40] mt-1">
+                {displayAllTimeRevenue.toLocaleString('vi-VN')} đ
+              </p>
+              <span className="text-[10px] text-[#808070] font-bold flex items-center gap-0.5 mt-1">
+                🔒 Tích lũy vĩnh viễn trên App ({allTimePaidOrders.length} đơn)
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-[#5A5A40] text-white flex items-center justify-center font-bold shadow-xs">
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </div>
+
           <div className="bg-white p-4 rounded-2xl border border-[#E0E0D6] shadow-2xs flex items-center justify-between">
             <div>
-              <p className="text-xs font-bold text-[#808070]">TỔNG DOANH THU</p>
-              <p className="text-xl font-extrabold text-[#5A5A40] mt-1">
-                {totalRevenue.toLocaleString('vi-VN')} đ
+              <p className="text-xs font-bold text-[#808070]">DOANH THU HÔM NAY</p>
+              <p className="text-xl font-extrabold text-emerald-800 mt-1">
+                {displayTodayRevenue.toLocaleString('vi-VN')} đ
               </p>
               <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5 mt-1">
-                <TrendingUp className="w-3 h-3" /> Cập nhật thời gian thực
+                <TrendingUp className="w-3 h-3" /> Ngày {new Date().toLocaleDateString('vi-VN')} (Lưu vĩnh viễn trong ngày)
+              </span>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-800 flex items-center justify-center font-bold border border-emerald-200">
+              <DollarSign className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-[#E0E0D6] shadow-2xs flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-[#808070]">
+                DOANH THU {timeRange === 'today' ? 'NGÀY CHỌN' : timeRange === 'month' ? 'THÁNG CHỌN' : timeRange === 'year' ? 'NĂM CHỌN' : '7 NGÀY QUA'}
+              </p>
+              <p className="text-xl font-extrabold text-[#1A1A1A] mt-1">
+                {totalRevenue.toLocaleString('vi-VN')} đ
+              </p>
+              <span className="text-[10px] text-[#808070] font-bold mt-1 block">
+                {timeRange === 'today' ? selectedDate : timeRange === 'month' ? selectedMonth : timeRange === 'year' ? selectedYear : '7 ngày qua'}
               </span>
             </div>
             <div className="w-12 h-12 rounded-2xl bg-[#F5F5F0] text-[#5A5A40] flex items-center justify-center font-bold border border-[#E0E0D6]">
-              <DollarSign className="w-6 h-6" />
+              <Calendar className="w-6 h-6" />
             </div>
           </div>
 
@@ -534,7 +625,7 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
                   max="2030"
                   value={selectedYear}
                   onChange={(e) => setSelectedYear(e.target.value)}
-                  className="w-16 text-xs font-bold text-rose-900 bg-transparent focus:outline-hidden"
+                  className="w-16 text-xs font-bold text-rose-900 bg-transparent focus:outline-none"
                 />
                 <button
                   type="button"
@@ -545,6 +636,21 @@ export const ReportsAnalytics: React.FC<ReportsAnalyticsProps> = ({
                   <span>Xóa Doanh Thu Năm {selectedYear}</span>
                 </button>
               </div>
+
+              {/* Clear Cumulative */}
+              {setCumulativeRevenue && (
+                <div className="flex items-center gap-2 bg-white p-2 rounded-xl border border-rose-200 shadow-2xs">
+                  <span className="text-xs font-bold text-rose-900">Lũy Kế:</span>
+                  <button
+                    type="button"
+                    onClick={handleClearCumulativeRevenue}
+                    className="px-3 py-1.5 rounded-lg bg-rose-950 hover:bg-black text-white font-bold text-xs transition-all shadow-xs flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Xóa Doanh Thu Lũy Kế ({displayAllTimeRevenue.toLocaleString('vi-VN')}đ)</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
