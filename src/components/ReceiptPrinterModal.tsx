@@ -197,16 +197,16 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                   )}
                 </div>
 
-                {/* Items Table */}
-                <table className="w-full text-left mb-3 border-b border-dashed border-[#808070] pb-2">
+                {/* Items Bordered Grid Table (Exact Match to User Screenshot) */}
+                <table className="w-full text-left mb-4 border-collapse border-2 border-black text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-[#808070] text-xs font-bold">
-                      <th className="py-1">Món</th>
-                      <th className="py-1 text-center">SL</th>
-                      <th className="py-1 text-right">T.Tiền</th>
+                    <tr className="bg-stone-100 border-b-2 border-black font-black text-black">
+                      <th className="py-2 px-2.5 border-r-2 border-black font-black text-black">Ten mon</th>
+                      <th className="py-2 px-1 border-r-2 border-black text-center font-black text-black w-14">SL</th>
+                      <th className="py-2 px-2 border-black text-right font-black text-black w-28">T.Tien</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#E0E0D6]">
+                  <tbody>
                     {order.items.map((item, idx) => {
                       const itemFontSizeClass =
                         storeConfig.printerFontSize === 'xlarge'
@@ -218,27 +218,25 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                           : 'text-[13px]';
 
                       return (
-                        <tr key={idx} className="align-top border-b border-stone-200">
-                          <td className="py-1.5 pr-1">
-                            <div className={`font-bold text-black uppercase leading-snug ${itemFontSizeClass}`}>
-                              {item.menuItem?.name || 'Món ăn'}
-                            </div>
+                        <tr key={idx} className="border-b border-black">
+                          <td className="py-2 px-2.5 border-r border-black font-bold text-black uppercase leading-snug">
+                            {item.menuItem?.name || 'Món ăn'}
                             {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                              <div className="text-[10px] text-[#666] pl-1 font-medium mt-0.5">
+                              <div className="text-[10px] text-[#444] pl-1 font-medium mt-0.5 normal-case">
                                 {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
                               </div>
                             )}
                             {item.itemNote && (
-                              <div className="text-[10px] text-amber-800 italic pl-1 mt-0.5">
+                              <div className="text-[10px] text-amber-900 italic pl-1 mt-0.5 normal-case">
                                 * {item.itemNote}
                               </div>
                             )}
                           </td>
-                          <td className={`py-1.5 px-1 text-center font-bold text-black ${itemFontSizeClass}`}>
+                          <td className={`py-2 px-1 border-r border-black text-center font-extrabold text-black ${itemFontSizeClass}`}>
                             {item.quantity}
                           </td>
-                          <td className={`py-1.5 pl-1 text-right font-bold text-black ${itemFontSizeClass}`}>
-                            {item.totalPrice.toLocaleString('vi-VN')}
+                          <td className={`py-2 px-2 text-right font-extrabold text-black whitespace-nowrap ${itemFontSizeClass}`}>
+                            {item.totalPrice.toLocaleString('vi-VN')} đ
                           </td>
                         </tr>
                       );
