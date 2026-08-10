@@ -37,7 +37,7 @@ import { printOrderUsb, initUsbAutoDetect } from './services/usbPrinterService';
 
 export default function App() {
   // Persistence Helper with Quota Protection
-  const saveToLocalStorageSafe = (key: string, value: any) => {
+  const saveToLocalStorageSafe = <T,>(key: string, value: T) => {
     try {
       window.localStorage.setItem(key, JSON.stringify(value));
     } catch (err) {
