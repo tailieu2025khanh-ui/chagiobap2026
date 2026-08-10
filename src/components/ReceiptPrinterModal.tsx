@@ -93,8 +93,10 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
     'LIÊN 2: LƯU TẠI CỬA HÀNG',
   ];
 
+  if (!isOpen || !order) return null;
+
   return (
-    <div id="printable-receipt-wrapper" className={isOpen ? "fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn" : "hidden print:block"}>
+    <div id="printable-receipt-wrapper" className="fixed inset-0 z-50 flex items-center justify-center bg-[#2C2C24]/60 backdrop-blur-xs p-4 animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col overflow-hidden border border-[#E0E0D6]">
         {/* Modal Top Bar */}
         <div className="modal-top-bar no-print bg-[#2C2C24] text-white p-4 flex items-center justify-between border-b border-[#3E3E34]">
