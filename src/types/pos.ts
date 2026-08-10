@@ -119,7 +119,7 @@ export interface StoreConfig {
   printerIp: string;
   printerPort: number;
   paperSize: '80mm' | '58mm';
-  printerFontSize?: 'normal' | 'large' | 'xlarge';
+  printerFontSize?: 'size13' | 'normal' | 'large' | 'xlarge';
   printCopies: number; // 1, 2, or 3
   autoPrintReceipt: boolean;
   printKitchenReceipt: boolean;
