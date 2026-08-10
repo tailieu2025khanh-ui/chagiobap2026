@@ -466,7 +466,7 @@ export default function App() {
         )}
 
         {activeTab === 'reports' && (
-          <ReportsAnalytics orders={orders} menuItems={menuItems} />
+          <ReportsAnalytics orders={orders} setOrders={setOrders} menuItems={menuItems} />
         )}
 
         {activeTab === 'menu' && (
