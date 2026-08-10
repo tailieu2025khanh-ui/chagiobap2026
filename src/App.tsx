@@ -7,6 +7,7 @@ import {
   Shift,
   StoreConfig,
   CartItem,
+  StaffMember,
 } from './types/pos';
 import {
   DEFAULT_STORE_CONFIG,
@@ -15,6 +16,7 @@ import {
   INITIAL_TABLES,
   INITIAL_SHIFT,
   INITIAL_PAST_ORDERS,
+  INITIAL_STAFF,
 } from './data/initialData';
 import { Header, ViewTab } from './components/Header';
 import { CashierPOS } from './components/CashierPOS';
@@ -23,9 +25,11 @@ import { KitchenDisplay } from './components/KitchenDisplay';
 import { ReportsAnalytics } from './components/ReportsAnalytics';
 import { MenuManager } from './components/MenuManager';
 import { ShiftManager } from './components/ShiftManager';
+import { StaffManager } from './components/StaffManager';
 import { SettingsHardware } from './components/SettingsHardware';
 import { PaymentModal } from './components/PaymentModal';
 import { ReceiptPrinterModal } from './components/ReceiptPrinterModal';
+import { TodayOrdersModal } from './components/TodayOrdersModal';
 import { GoogleSheetsModal } from './components/GoogleSheetsModal';
 import { StaffQuizModal } from './components/StaffQuizModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
@@ -62,6 +66,7 @@ export default function App() {
   const [tables, setTables] = useLocalStorage<Table[]>('fnb_tables', INITIAL_TABLES);
   const [orders, setOrders] = useLocalStorage<Order[]>('fnb_orders', INITIAL_PAST_ORDERS);
   const [shift, setShift] = useLocalStorage<Shift>('fnb_shift', INITIAL_SHIFT);
+  const [staffList, setStaffList] = useLocalStorage<StaffMember[]>('fnb_staff_list', INITIAL_STAFF);
 
   // Cashier Cart & Active Order State
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -71,10 +76,11 @@ export default function App() {
   const [vatPercent, setVatPercent] = useState<number>(0);
   const [customerNote, setCustomerNote] = useState<string>('');
 
-  // Payment & Receipt & Google Sheet & Quiz & API Key Modals
+  // Payment & Receipt & Today Orders & Google Sheet & Quiz & API Key Modals
   const [payingOrder, setPayingOrder] = useState<Order | null>(null);
   const [printingOrder, setPrintingOrder] = useState<Order | null>(null);
   const [lastPrintedOrder, setLastPrintedOrder] = useState<Order | null>(null);
+  const [isTodayOrdersModalOpen, setIsTodayOrdersModalOpen] = useState<boolean>(false);
   const [isGoogleSheetsModalOpen, setIsGoogleSheetsModalOpen] = useState<boolean>(false);
   const [isStaffQuizModalOpen, setIsStaffQuizModalOpen] = useState<boolean>(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
@@ -415,6 +421,7 @@ export default function App() {
         shift={shift}
         storeConfig={storeConfig}
         kitchenPendingCount={kitchenPendingCount}
+        onOpenTodayOrdersModal={() => setIsTodayOrdersModalOpen(true)}
         onOpenGoogleSheetsModal={() => setIsGoogleSheetsModalOpen(true)}
         onOpenStaffQuizModal={() => setIsStaffQuizModalOpen(true)}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
@@ -482,6 +489,13 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'staff' && (
+          <StaffManager
+            staffList={staffList}
+            setStaffList={setStaffList}
+          />
+        )}
+
         {activeTab === 'settings' && (
           <SettingsHardware
             storeConfig={storeConfig}
@@ -512,6 +526,14 @@ export default function App() {
           onClose={() => setPrintingOrder(null)}
         />
       )}
+
+      {/* Today Bills Archive Modal */}
+      <TodayOrdersModal
+        orders={orders}
+        storeConfig={storeConfig}
+        isOpen={isTodayOrdersModalOpen}
+        onClose={() => setIsTodayOrdersModalOpen(false)}
+      />
 
       {/* Google Sheets Synchronization Modal */}
       <GoogleSheetsModal
