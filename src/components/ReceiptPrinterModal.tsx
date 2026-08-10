@@ -260,9 +260,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </div>
                   )}
 
-                  <div className="flex justify-between text-sm font-bold pt-1 text-[#1A1A1A]">
-                    <span>TỔNG CỘNG:</span>
-                    <span className="text-base">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
+                  <div className="flex justify-between text-xs font-bold pt-1 text-black">
+                    <span>Tổng cộng:</span>
+                    <span className="text-xs font-bold">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
 
