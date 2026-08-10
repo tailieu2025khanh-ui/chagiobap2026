@@ -19,6 +19,8 @@ import {
   ZoomOut,
   RefreshCw,
   Move,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 
 interface MenuManagerProps {
@@ -181,6 +183,47 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
     if (confirm('Bạn có chắc chắn muốn xóa món này khỏi thực đơn?')) {
       setMenuItems(menuItems.filter((i) => i.id !== id));
     }
+  };
+
+  const handleMoveUp = (itemId: string) => {
+    const idx = menuItems.findIndex((i) => i.id === itemId);
+    if (idx <= 0) return;
+    const newItems = [...menuItems];
+    const temp = newItems[idx];
+    newItems[idx] = newItems[idx - 1];
+    newItems[idx - 1] = temp;
+    newItems.forEach((item, index) => {
+      item.orderIndex = index + 1;
+    });
+    setMenuItems(newItems);
+  };
+
+  const handleMoveDown = (itemId: string) => {
+    const idx = menuItems.findIndex((i) => i.id === itemId);
+    if (idx < 0 || idx >= menuItems.length - 1) return;
+    const newItems = [...menuItems];
+    const temp = newItems[idx];
+    newItems[idx] = newItems[idx + 1];
+    newItems[idx + 1] = temp;
+    newItems.forEach((item, index) => {
+      item.orderIndex = index + 1;
+    });
+    setMenuItems(newItems);
+  };
+
+  const handlePositionInput = (itemId: string, targetPosStr: string) => {
+    const targetPos = parseInt(targetPosStr, 10);
+    if (isNaN(targetPos) || targetPos < 1 || targetPos > menuItems.length) return;
+    const currentIdx = menuItems.findIndex((i) => i.id === itemId);
+    if (currentIdx === -1 || currentIdx === targetPos - 1) return;
+
+    const newItems = [...menuItems];
+    const [item] = newItems.splice(currentIdx, 1);
+    newItems.splice(targetPos - 1, 0, item);
+    newItems.forEach((it, index) => {
+      it.orderIndex = index + 1;
+    });
+    setMenuItems(newItems);
   };
 
   const handleOpenCreate = () => {
@@ -448,6 +491,7 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-[#E0E0D6] text-[#808070] font-bold bg-[#FAF9F6]">
+                  <th className="py-3 px-4 text-center">Thứ Tự (STT)</th>
                   <th className="py-3 px-4">Ảnh & Tên Món</th>
                   <th className="py-3 px-4">SKU</th>
                   <th className="py-3 px-4">Phân Loại</th>
@@ -459,6 +503,32 @@ export const MenuManager: React.FC<MenuManagerProps> = ({
               <tbody className="divide-y divide-[#E0E0D6]/60 font-medium">
                 {filteredItems.map((item) => (
                   <tr key={item.id} className="hover:bg-[#FAF9F6] transition-colors">
+                    <td className="py-3 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => handleMoveUp(item.id)}
+                          className="p-1 rounded-lg hover:bg-stone-200 text-[#5A5A40] transition-colors"
+                          title="Đẩy món lên vị trí trước"
+                        >
+                          <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          max={menuItems.length}
+                          value={item.orderIndex || menuItems.findIndex((i) => i.id === item.id) + 1}
+                          onChange={(e) => handlePositionInput(item.id, e.target.value)}
+                          className="w-10 text-center font-bold text-xs py-1 rounded-lg border border-[#E0E0D6] bg-[#FAF9F6]"
+                        />
+                        <button
+                          onClick={() => handleMoveDown(item.id)}
+                          className="p-1 rounded-lg hover:bg-stone-200 text-[#5A5A40] transition-colors"
+                          title="Đẩy món xuống vị trí sau"
+                        >
+                          <ArrowDown className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </td>
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
                         {/* Interactive Image with Quick Camera Upload Overlay */}
