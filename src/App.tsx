@@ -36,7 +36,29 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { printOrderUsb, initUsbAutoDetect } from './services/usbPrinterService';
 
 export default function App() {
-  // Persistence Helper
+  // Persistence Helper with Quota Protection
+  const saveToLocalStorageSafe = (key: string, value: any) => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (err) {
+      console.warn(`[LocalStorage] Direct save failed for ${key}, stripping image payload...`, err);
+      try {
+        if (key === 'fnb_orders' && Array.isArray(value)) {
+          const sanitizedOrders = value.map((ord: Order) => ({
+            ...ord,
+            items: ord.items.map((it) => ({
+              ...it,
+              menuItem: it.menuItem ? { ...it.menuItem, image: '' } : it.menuItem,
+            })),
+          }));
+          window.localStorage.setItem(key, JSON.stringify(sanitizedOrders));
+        }
+      } catch (fallbackErr) {
+        console.error(`[LocalStorage] Fallback save failed for ${key}`, fallbackErr);
+      }
+    }
+  };
+
   const useLocalStorage = <T,>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] => {
     const [storedValue, setStoredValue] = useState<T>(() => {
       try {
@@ -48,11 +70,7 @@ export default function App() {
     });
 
     useEffect(() => {
-      try {
-        window.localStorage.setItem(key, JSON.stringify(storedValue));
-      } catch (error) {
-        console.error(error);
-      }
+      saveToLocalStorageSafe(key, storedValue);
     }, [key, storedValue]);
 
     return [storedValue, setStoredValue];
@@ -120,16 +138,19 @@ export default function App() {
     // 3. Cross-Tab Real-time Synchronization Listener
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'fnb_menu_items' && e.newValue) {
-        try {
-          const updatedMenu = JSON.parse(e.newValue);
-          setMenuItems(updatedMenu);
-        } catch {}
+        try { setMenuItems(JSON.parse(e.newValue)); } catch {}
       }
       if (e.key === 'fnb_store_config' && e.newValue) {
-        try {
-          const updatedConfig = JSON.parse(e.newValue);
-          setStoreConfig(updatedConfig);
-        } catch {}
+        try { setStoreConfig(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === 'fnb_orders' && e.newValue) {
+        try { setOrders(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === 'fnb_tables' && e.newValue) {
+        try { setTables(JSON.parse(e.newValue)); } catch {}
+      }
+      if (e.key === 'fnb_staff_list' && e.newValue) {
+        try { setStaffList(JSON.parse(e.newValue)); } catch {}
       }
     };
 
