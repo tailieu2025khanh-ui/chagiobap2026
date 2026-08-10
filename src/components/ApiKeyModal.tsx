@@ -70,10 +70,11 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({
       setTimeout(() => {
         onClose();
       }, 1200);
-    } catch (err: any) {
+    } catch (err) {
+      const error = err as Error;
       setStatusMessage({
         type: 'error',
-        text: err.message || 'Lỗi kiểm tra API Key. Vui lòng kiểm tra lại Key Gemini.',
+        text: error.message || 'Lỗi kiểm tra API Key. Vui lòng kiểm tra lại Key Gemini.',
       });
     } finally {
       setTesting(false);
