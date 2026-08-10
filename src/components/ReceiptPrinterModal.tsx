@@ -9,7 +9,7 @@ import {
 } from '../services/usbPrinterService';
 
 interface ReceiptPrinterModalProps {
-  order: Order | null;
+  order: Order;
   storeConfig: StoreConfig;
   isOpen: boolean;
   onClose: () => void;
@@ -209,7 +209,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {order.items.map((item, idx) => {
+                    {(order.items || []).map((item, idx) => {
                       const itemFontSizeClass =
                         storeConfig.printerFontSize === 'xlarge'
                           ? 'text-base sm:text-lg'
@@ -238,7 +238,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                             {item.quantity}
                           </td>
                           <td className={`py-2 px-2 text-right font-extrabold text-black whitespace-nowrap ${itemFontSizeClass}`}>
-                            {item.totalPrice.toLocaleString('vi-VN')} đ
+                            {(item.totalPrice || 0).toLocaleString('vi-VN')} đ
                           </td>
                         </tr>
                       );
@@ -248,23 +248,23 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
 
                 {/* Totals Summary */}
                 <div className="text-xs space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
-                  {order.discountPercent > 0 && (
+                  {(order.discountPercent || 0) > 0 && (
                     <div className="flex justify-between text-emerald-700 font-medium text-[11px]">
                       <span>Giảm giá ({order.discountPercent}%):</span>
-                      <span>-{order.discountAmount.toLocaleString('vi-VN')} đ</span>
+                      <span>-{(order.discountAmount || 0).toLocaleString('vi-VN')} đ</span>
                     </div>
                   )}
 
-                  {order.vatPercent > 0 && (
+                  {(order.vatPercent || 0) > 0 && (
                     <div className="flex justify-between text-[#808070]">
                       <span>Thuế VAT ({order.vatPercent}%):</span>
-                      <span>+{order.vatAmount.toLocaleString('vi-VN')} đ</span>
+                      <span>+{(order.vatAmount || 0).toLocaleString('vi-VN')} đ</span>
                     </div>
                   )}
 
                   <div className="flex justify-between items-baseline text-[15px] font-extrabold pt-1.5 text-black border-t border-black mt-1">
                     <span className="font-extrabold text-[15px]">Tổng cộng:</span>
-                    <span className="font-extrabold text-[15px]">{order.grandTotal.toLocaleString('vi-VN')} đ</span>
+                    <span className="font-extrabold text-[15px]">{(order.grandTotal || 0).toLocaleString('vi-VN')} đ</span>
                   </div>
                 </div>
 
