@@ -1,318 +1,248 @@
 import React, { useState } from 'react';
-import { StaffMember } from '../types/pos';
-import { Users, UserPlus, Search, Edit2, Trash2, CheckCircle, XCircle, Phone, BadgeCheck } from 'lucide-react';
+import { Order, StoreConfig } from '../types/pos';
+import { Clock, Printer, Eye, X, Search, CheckCircle, ShoppingBag } from 'lucide-react';
+import { ReceiptPrinterModal } from './ReceiptPrinterModal';
 
-interface StaffManagerProps {
-  staffList: StaffMember[];
-  setStaffList: React.Dispatch<React.SetStateAction<StaffMember[]>>;
+interface TodayOrdersModalProps {
+  orders: Order[];
+  storeConfig: StoreConfig;
+  isOpen: boolean;
+  onClose: () => void;
 }
 
-export const StaffManager: React.FC<StaffManagerProps> = ({ staffList, setStaffList }) => {
+export const TodayOrdersModal: React.FC<TodayOrdersModalProps> = ({
+  orders,
+  storeConfig,
+  isOpen,
+  onClose,
+}) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<StaffMember | null>(null);
+  const [selectedOrderToPrint, setSelectedOrderToPrint] = useState<Order | null>(null);
+  const [selectedOrderToView, setSelectedOrderToView] = useState<Order | null>(null);
 
-  const [formData, setFormData] = useState<{
-    code: string;
-    name: string;
-    role: 'cashier' | 'manager' | 'kitchen' | 'waiter';
-    phone: string;
-    status: 'active' | 'inactive';
-  }>({
-    code: '',
-    name: '',
-    role: 'cashier',
-    phone: '',
-    status: 'active',
+  if (!isOpen && !selectedOrderToPrint && !selectedOrderToView) return null;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Filter orders created TODAY
+  const todayOrders = (orders || []).filter((o) => {
+    if (!o || !o.createdAt) return false;
+    const orderDateStr = o.createdAt.split('T')[0];
+    return orderDateStr === todayStr;
   });
 
-  const handleOpenAdd = () => {
-    setEditingStaff(null);
-    setFormData({
-      code: `NV${Math.floor(10 + Math.random() * 90)}`,
-      name: '',
-      role: 'cashier',
-      phone: '',
-      status: 'active',
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleOpenEdit = (staff: StaffMember) => {
-    setEditingStaff(staff);
-    setFormData({
-      code: staff.code,
-      name: staff.name,
-      role: staff.role,
-      phone: staff.phone,
-      status: staff.status,
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (id: string, name: string) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa nhân viên "${name}" khỏi hệ thống?`)) {
-      setStaffList((prev) => prev.filter((s) => s.id !== id));
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!formData.name || !formData.phone) {
-      alert('Vui lòng nhập tên nhân viên và số điện thoại!');
-      return;
-    }
-
-    if (editingStaff) {
-      const editingId = editingStaff.id;
-      setStaffList((prev) =>
-        prev.map((s) =>
-          s.id === editingId
-            ? { ...s, code: formData.code, name: formData.name, role: formData.role, phone: formData.phone, status: formData.status }
-            : s
-        )
-      );
-    } else {
-      const newStaff: StaffMember = {
-        id: `st_${Date.now()}`,
-        code: formData.code || `NV${Math.floor(10 + Math.random() * 90)}`,
-        name: formData.name,
-        role: formData.role,
-        phone: formData.phone,
-        status: formData.status,
-        createdAt: new Date().toISOString(),
-      };
-      setStaffList((prev) => [newStaff, ...prev]);
-    }
-    setIsModalOpen(false);
-  };
-
-  const filteredStaff = (staffList || []).filter(
-    (s) =>
-      (s.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (s.phone || '').includes(searchQuery)
+  const filteredOrders = todayOrders.filter(
+    (o) =>
+      (o.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (o.tableName && o.tableName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (o.items || []).some((i) => (i.menuItem?.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const getRoleBadge = (role: string) => {
-    switch (role) {
-      case 'manager':
-        return <span className="bg-purple-100 text-purple-800 border border-purple-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Quản Lý</span>;
-      case 'cashier':
-        return <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Thu Ngân</span>;
-      case 'kitchen':
-        return <span className="bg-amber-100 text-amber-800 border border-amber-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Đầu Bếp</span>;
-      case 'waiter':
-      default:
-        return <span className="bg-blue-100 text-blue-800 border border-blue-300 px-2.5 py-0.5 rounded-full text-[10px] font-bold">Phục Vụ</span>;
-    }
-  };
+  const todayTotalRevenue = todayOrders
+    .filter((o) => o.paymentStatus === 'paid')
+    .reduce((sum, o) => sum + o.grandTotal, 0);
 
   return (
-    <div className="flex-1 bg-[#F5F5F0] p-4 sm:p-6 overflow-y-auto selection:bg-[#5A5A40] selection:text-white">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header Bar */}
-        <div className="bg-white rounded-2xl p-5 shadow-2xs border border-[#E0E0D6] flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-[#1A1A1A] flex items-center gap-2">
-              <Users className="w-5 h-5 text-[#5A5A40]" />
-              QUẢN LÝ DANH SÁCH NHÂN VIÊN
-            </h2>
-            <p className="text-xs text-[#808070] mt-0.5 font-medium">
-              Thêm mới, chỉnh sửa thông tin, phân quyền chức vụ và quản lý trạng thái nhân viên quán.
-            </p>
-          </div>
+    <>
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-[#E0E0D6] animate-scaleUp">
+            {/* Header */}
+            <div className="p-5 border-b border-[#E0E0D6] bg-[#FAF9F6] rounded-t-2xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#5A5A40] text-white flex items-center justify-center font-bold">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-[#1A1A1A]">
+                    LỊCH SỬ HÓA ĐƠN BÁN HÀNG TRONG NGÀY ({new Date().toLocaleDateString('vi-VN')})
+                  </h3>
+                  <p className="text-xs text-[#808070] font-medium">
+                    Tổng hôm nay: <span className="font-extrabold text-[#5A5A40]">{todayTotalRevenue.toLocaleString('vi-VN')} đ</span> ({todayOrders.length} hóa đơn)
+                  </p>
+                </div>
+              </div>
 
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2.5 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs shadow-xs transition-all flex items-center gap-2"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span>THÊM NHÂN VIÊN MỚI</span>
-          </button>
-        </div>
+              <button
+                onClick={onClose}
+                className="w-8 h-8 rounded-full bg-stone-100 hover:bg-stone-200 text-[#808070] flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
-        {/* Search Bar */}
-        <div className="bg-white p-3 rounded-2xl border border-[#E0E0D6] flex items-center gap-3">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-[#808070]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm theo tên nhân viên, mã NV hoặc số điện thoại..."
-              className="w-full text-xs font-medium pl-9 pr-3 py-2 rounded-xl border border-[#E0E0D6] focus:outline-none focus:border-[#5A5A40] bg-[#FAF9F6]"
-            />
-          </div>
-          <span className="text-xs text-[#808070] font-bold px-2">Tong: {filteredStaff.length} nhân viên</span>
-        </div>
+            {/* Search Filter Bar */}
+            <div className="p-4 bg-white border-b border-[#E0E0D6] flex items-center gap-3">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-3 text-[#808070]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm mã hóa đơn, tên bàn hoặc món ăn..."
+                  className="w-full text-xs font-medium pl-9 pr-3 py-2 rounded-xl border border-[#E0E0D6] focus:outline-none focus:border-[#5A5A40] bg-[#FAF9F6]"
+                />
+              </div>
+            </div>
 
-        {/* Staff Table */}
-        <div className="bg-white rounded-2xl border border-[#E0E0D6] shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-[#E0E0D6] text-[#808070] font-bold bg-[#FAF9F6]">
-                  <th className="py-3 px-4">Mã NV</th>
-                  <th className="py-3 px-4">Họ & Tên Nhân Viên</th>
-                  <th className="py-3 px-4">Chức Vụ</th>
-                  <th className="py-3 px-4">Số Điện Thoại</th>
-                  <th className="py-3 px-4 text-center">Trạng Thái</th>
-                  <th className="py-3 px-4 text-right">Thao Tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E0E0D6]/60 font-medium">
-                {filteredStaff.map((staff) => (
-                  <tr key={staff.id} className="hover:bg-[#FAF9F6] transition-colors">
-                    <td className="py-3 px-4 font-bold text-[#5A5A40]">{staff.code}</td>
-                    <td className="py-3 px-4 font-bold text-[#1A1A1A] text-sm">{staff.name}</td>
-                    <td className="py-3 px-4">{getRoleBadge(staff.role)}</td>
-                    <td className="py-3 px-4 font-mono text-[#808070]">
-                      <span className="inline-flex items-center gap-1">
-                        <Phone className="w-3 h-3 text-[#5A5A40]" />
-                        {staff.phone}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      {staff.status === 'active' ? (
-                        <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3 text-emerald-700" />
-                          Đang Làm Việc
-                        </span>
-                      ) : (
-                        <span className="bg-stone-200 text-stone-700 px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1">
-                          <XCircle className="w-3 h-3 text-stone-500" />
-                          Đã Nghỉ
+            {/* Body List */}
+            <div className="p-4 overflow-y-auto flex-1 space-y-3">
+              {filteredOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-[#FAF9F6] p-4 rounded-xl border border-[#E0E0D6] hover:border-[#5A5A40] transition-all flex flex-wrap items-center justify-between gap-3 shadow-2xs"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm text-[#1A1A1A]">{order.id}</span>
+                      {order.tableName && (
+                        <span className="bg-[#5A5A40] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          {order.tableName}
                         </span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleOpenEdit(staff)}
-                          className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-[#5A5A40] font-bold transition-all flex items-center gap-1 text-[11px]"
-                          title="Sửa nhân viên"
-                        >
-                          <Edit2 className="w-3.5 h-3.5" />
-                          <span>Sửa</span>
-                        </button>
-                        <button
-                          onClick={() => handleDelete(staff.id, staff.name)}
-                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold transition-all flex items-center gap-1 text-[11px]"
-                          title="Xóa nhân viên"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Xóa</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      {order.paymentStatus === 'paid' ? (
+                        <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3 text-emerald-700" />
+                          Đã Thanh Toán
+                        </span>
+                      ) : (
+                        <span className="bg-amber-100 text-amber-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                          Chưa Thanh Toán
+                        </span>
+                      )}
+                    </div>
 
-                {filteredStaff.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="py-8 text-center text-[#808070] font-medium">
-                      Chưa có nhân viên nào trong danh sách.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+                    <p className="text-xs text-[#808070] font-medium">
+                      Giờ tạo: <span className="font-bold text-[#1A1A1A]">{new Date(order.createdAt).toLocaleTimeString('vi-VN')}</span> | Thu ngân: <span className="font-bold">{order.cashierName || 'Thu Ngân'}</span>
+                    </p>
 
-      {/* Add / Edit Staff Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-[#E0E0D6] animate-scaleUp">
-            <h3 className="text-base font-bold text-[#1A1A1A] flex items-center gap-2">
-              <BadgeCheck className="w-5 h-5 text-[#5A5A40]" />
-              {editingStaff ? 'CHỈNH SỬA THÔNG TIN NHÂN VIÊN' : 'THÊM NHÂN VIÊN MỚI'}
-            </h3>
+                    <p className="text-xs text-[#5A5A40] font-bold">
+                      {(order.items || []).map((i) => `${i.menuItem?.name || 'Món'} x${i.quantity}`).join(', ')}
+                    </p>
+                  </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4 text-xs font-bold">
-              <div>
-                <label className="block text-[#1A1A1A] mb-1">Mã Nhân Viên:</label>
-                <input
-                  type="text"
-                  value={formData.code}
-                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                  placeholder="NV01"
-                  className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-mono bg-[#FAF9F6]"
-                  required
-                />
-              </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="block text-xs font-bold text-[#808070]">TỔNG THÀNH TIỀN</span>
+                      <span className="text-base font-extrabold text-[#5A5A40]">
+                        {(order.grandTotal || 0).toLocaleString('vi-VN')} đ
+                      </span>
+                    </div>
 
-              <div>
-                <label className="block text-[#1A1A1A] mb-1">Họ và Tên Nhân Viên:</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Nhập tên nhân viên..."
-                  className="w-full p-2.5 rounded-xl border border-[#E0E0D6] bg-[#FAF9F6]"
-                  required
-                />
-              </div>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setSelectedOrderToView(order)}
+                        className="px-3 py-2 rounded-xl bg-stone-100 hover:bg-stone-200 text-[#1A1A1A] font-bold text-xs flex items-center gap-1 transition-all"
+                        title="Xem chi tiết đơn hàng"
+                      >
+                        <Eye className="w-3.5 h-3.5 text-[#5A5A40]" />
+                        <span>Xem</span>
+                      </button>
 
-              <div>
-                <label className="block text-[#1A1A1A] mb-1">Số Điện Thoại:</label>
-                <input
-                  type="text"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="0908 123 456"
-                  className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-mono bg-[#FAF9F6]"
-                  required
-                />
-              </div>
+                      <button
+                        onClick={() => setSelectedOrderToPrint(order)}
+                        className="px-3.5 py-2 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all"
+                        title="In lại hóa đơn"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>In Lại Bill</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
 
-              <div>
-                <label className="block text-[#1A1A1A] mb-1">Chức Vụ:</label>
-                <select
-                  value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value as any })}
-                  className="w-full p-2.5 rounded-xl border border-[#E0E0D6] bg-[#FAF9F6] font-bold"
-                >
-                  <option value="cashier">Thu Ngân (Cashier)</option>
-                  <option value="waiter">Phục Vụ (Waiter)</option>
-                  <option value="kitchen">Đầu Bếp (Kitchen)</option>
-                  <option value="manager">Quản Lý (Manager)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#1A1A1A] mb-1">Trạng Thái Làm Việc:</label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full p-2.5 rounded-xl border border-[#E0E0D6] bg-[#FAF9F6] font-bold"
-                >
-                  <option value="active">Đang Làm Việc (Active)</option>
-                  <option value="inactive">Đã Nghỉ Việc (Inactive)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-[#E0E0D6]">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-[#E0E0D6] text-[#808070] font-bold hover:bg-stone-100"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#5A5A40] hover:bg-[#4A4A34] text-white font-bold shadow-xs"
-                >
-                  {editingStaff ? 'Cập Nhật' : 'Tạo Nhân Viên'}
-                </button>
-              </div>
-            </form>
+              {filteredOrders.length === 0 && (
+                <div className="py-12 text-center text-[#808070] font-medium">
+                  <ShoppingBag className="w-10 h-10 mx-auto text-[#E0E0D6] mb-2" />
+                  <p>Chưa có hóa đơn nào được tạo trong ngày hôm nay.</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
-    </div>
+
+      {/* View Detail Modal */}
+      {selectedOrderToView && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-[#E0E0D6]">
+            <div className="flex items-center justify-between border-b border-[#E0E0D6] pb-3">
+              <h4 className="font-bold text-sm text-[#1A1A1A]">CHI TIẾT HÓA ĐƠN {selectedOrderToView.id}</h4>
+              <button
+                onClick={() => setSelectedOrderToView(null)}
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 bg-[#FAF9F6] p-3 rounded-xl border border-[#E0E0D6]">
+                <p><strong>Vị trí / Bàn:</strong> {selectedOrderToView.tableName || 'Mang về'}</p>
+                <p><strong>Thời gian:</strong> {new Date(selectedOrderToView.createdAt).toLocaleString('vi-VN')}</p>
+                <p><strong>Thu ngân:</strong> {selectedOrderToView.cashierName}</p>
+                <p><strong>Hình thức TT:</strong> {selectedOrderToView.paymentMethod || 'Tiền mặt'}</p>
+              </div>
+
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="border-b border-[#E0E0D6] text-[#808070] font-bold">
+                    <th className="py-1.5">Món</th>
+                    <th className="py-1.5 text-center">SL</th>
+                    <th className="py-1.5 text-right">T.Tiền</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#E0E0D6]">
+                  {(selectedOrderToView.items || []).map((item, idx) => (
+                    <tr key={idx}>
+                      <td className="py-1.5 font-bold text-[#1A1A1A]">{item.menuItem?.name || 'Món ăn'}</td>
+                      <td className="py-1.5 text-center font-bold">{item.quantity}</td>
+                      <td className="py-1.5 text-right font-bold">{(item.totalPrice || 0).toLocaleString('vi-VN')} đ</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <div className="border-t border-[#E0E0D6] pt-2 flex justify-between font-extrabold text-sm text-[#5A5A40]">
+                <span>TỔNG THÀNH TIỀN:</span>
+                <span>{(selectedOrderToView.grandTotal || 0).toLocaleString('vi-VN')} đ</span>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-[#E0E0D6]">
+              <button
+                onClick={() => setSelectedOrderToView(null)}
+                className="px-4 py-2 rounded-xl border border-[#E0E0D6] font-bold text-xs"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedOrderToView) {
+                    setSelectedOrderToPrint(selectedOrderToView);
+                    setSelectedOrderToView(null);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-[#5A5A40] text-white font-bold text-xs flex items-center gap-1.5"
+              >
+                <Printer className="w-4 h-4" />
+                <span>In Bill Này</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Receipt Modal */}
+      {selectedOrderToPrint && (
+        <ReceiptPrinterModal
+          order={selectedOrderToPrint}
+          storeConfig={storeConfig}
+          isOpen={!!selectedOrderToPrint}
+          onClose={() => setSelectedOrderToPrint(null)}
+        />
+      )}
+    </>
   );
 };
