@@ -171,25 +171,30 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             {Array.from({ length: printCopies }).map((_, copyIdx) => (
               <div key={copyIdx} className={`receipt-copy ${copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}`}>
                 {/* Header / Store Info */}
-                <div className="space-y-1 mb-3 border-b border-dashed border-[#808070] pb-3 text-xs leading-normal">
+                <div className="space-y-0.5 mb-2 border-b border-dashed border-[#808070] pb-2 text-xs leading-normal">
                   <h2 className="font-extrabold text-sm uppercase text-[#1A1A1A]">
                     {storeConfig.storeName}
                   </h2>
                   <p>Chi nhánh: Chi nhánh trung tâm</p>
-                  <p>Điện thoại: {storeConfig.phone}</p>
+                  <p>Điện thoại: {storeConfig.phone || '1900 6522'}</p>
                 </div>
 
                 {/* Sales Order Meta Info */}
-                <div className="text-xs space-y-1 mb-3 border-b border-dashed border-[#808070] pb-2">
+                <div className="text-xs space-y-0.5 mb-2 border-b border-dashed border-[#808070] pb-2">
+                  <p>Liên số: Liên {copyIdx + 1}</p>
                   <p>Ngày bán: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
-                  <div className="text-center my-2.5">
+                  
+                  <div className="text-center my-2">
                     <h3 className="font-black text-base uppercase text-[#1A1A1A]">HOÁ ĐƠN BÁN HÀNG</h3>
-                    <p className="font-bold text-xs">{order.id}</p>
+                    <p className="font-extrabold text-xs">{order.id}</p>
                   </div>
+
                   <p>Khách hàng: Khách lẻ</p>
-                  <p>Địa chỉ: {storeConfig.address}</p>
-                  <p>SĐT: {storeConfig.phone}</p>
-                  <p>Wifi: {storeConfig.wifiName} | Pass: {storeConfig.wifiPass}</p>
+                  <p>Địa chỉ: {storeConfig.address || ''}</p>
+                  <p>Khu vực: {order.tableName || ''}</p>
+                  <p>Thời gian giao hàng: </p>
+                  <p>Điện thoại: {storeConfig.phone || ''}</p>
+
                   <p className="font-bold text-[#1A1A1A] pt-1">Người bán: {order.cashierName || 'CHẢ GIÒ BẮP'}</p>
                 </div>
 
