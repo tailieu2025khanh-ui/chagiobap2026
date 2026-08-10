@@ -168,14 +168,6 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           >
             {Array.from({ length: printCopies }).map((_, copyIdx) => (
               <div key={copyIdx} className={`receipt-copy ${copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}`}>
-                {printCopies > 1 && (
-                  <div className="text-center mb-3">
-                    <span className="inline-block bg-[#1A1A1A] text-white text-[10px] font-bold px-2.5 py-0.5 rounded tracking-wider">
-                      {copyLabels[copyIdx] || `LIÊN ${copyIdx + 1}`}
-                    </span>
-                  </div>
-                )}
-
                 {/* Header / Store Info */}
                 <div className="text-center space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
                   <h2 className="font-bold text-sm tracking-wider uppercase">
@@ -285,7 +277,6 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     </div>
                   )}
                   <p className="font-bold text-[11px]">CẢM ƠN VÀ HẸN GẶP LẠI QUÝ KHÁCH!</p>
-                  <p className="text-[9px] text-[#808070]">Rongta RP335UL / POS Sunmi D2 - CHA CHI BAP</p>
                 </div>
               </div>
             ))}
