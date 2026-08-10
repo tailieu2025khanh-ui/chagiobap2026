@@ -334,9 +334,9 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     const fontSizeByte =
       storeConfig.printerFontSize === 'xlarge'
         ? 0x11 // Double Height & Width
-        : storeConfig.printerFontSize === 'normal'
-        ? 0x00 // Normal Size
-        : 0x01; // Double Height (Default Large)
+        : storeConfig.printerFontSize === 'large'
+        ? 0x01 // Double Height
+        : 0x00; // Size 13 (Standard Crisp 13px Thermal Font)
 
     // Items - Dish Name & Quantity in Large Bold Font
     for (const item of order.items) {
