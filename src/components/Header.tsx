@@ -38,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   shift,
   storeConfig,
   kitchenPendingCount,
+  onOpenTodayOrdersModal,
   onOpenGoogleSheetsModal,
   onOpenStaffQuizModal,
   onOpenApiKeyModal,
@@ -283,6 +284,15 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <BookOpen className="w-4 h-4" />
           <span>Thực đơn</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('staff')}
+          className={`p-2 flex flex-col items-center text-[10px] ${
+            activeTab === 'staff' ? 'text-[#5A5A40] font-bold' : 'text-[#808070]'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Nhân viên</span>
         </button>
         <button
           onClick={() => setActiveTab('settings')}
