@@ -87,6 +87,10 @@ export default function App() {
     setStoreConfig((prev) => ({
       ...prev,
       storeName: 'CHẢ GIÒ BẮP QUẢNG NGÃI',
+      address: '87, Hùng Vương, Phường Bà Rịa, TP HCM',
+      phone: '0972371722',
+      wifiName: 'khanh vi',
+      wifiPass: '0914683351',
       accountHolder: 'CHA GIO BAP QUANG NGAI',
       printCopies: prev.printCopies === 1 ? 1 : 2,
       printerType: prev.printerType || 'usb',
