@@ -8,6 +8,9 @@ import {
   StoreConfig,
   CartItem,
   StaffMember,
+  OrderType,
+  PaymentMethod,
+  KitchenStatus,
 } from './types/pos';
 import {
   DEFAULT_STORE_CONFIG,
