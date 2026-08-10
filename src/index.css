@@ -76,7 +76,7 @@
     border: none !important;
     background: #ffffff !important;
     color: #000000 !important;
-    font-family: 'Courier New', Courier, monospace !important;
+    font-family: Arial, Helvetica, "Segoe UI", Roboto, sans-serif !important;
   }
 
   /* Force exactly 2 pages (2 sheets of paper) for LIÊN 1 and LIÊN 2 */
