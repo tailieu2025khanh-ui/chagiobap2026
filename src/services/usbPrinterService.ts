@@ -298,14 +298,6 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addBytes(0x1b, 0x45, 0x00); // Bold OFF
     addStr('-'.repeat(maxChars) + '\n');
 
-    // Copy Label Badge (If 2 or more copies)
-    if (actualCopies > 1) {
-      addBytes(0x1b, 0x45, 0x01); // Bold ON
-      addStr(`*** ${copyLabels[copyIdx] || `LIEN ${copyIdx + 1}`} ***\n`);
-      addBytes(0x1b, 0x45, 0x00); // Bold OFF
-      addStr('-'.repeat(maxChars) + '\n');
-    }
-
     // Title
     addBytes(0x1d, 0x21, 0x01); // Double height
     addStr('HOA DON THANH TOAN\n');
@@ -338,7 +330,7 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
         ? 0x01 // Double Height
         : 0x00; // Size 13 (Standard Crisp 13px Thermal Font)
 
-    // Items - Dish Name & Quantity in Large Bold Font
+    // Items - Dish Name & Quantity in Bold Font
     for (const item of order.items) {
       const name = removeVietnameseTones(item.menuItem?.name || 'Mon ăn');
       const qtyStr = `${item.quantity}`;
@@ -351,9 +343,9 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
 
       if (is58mm) {
         addStr(`${name.toUpperCase()}\n`);
-        addStr(`  SL: ${qtyStr}  TT: ${totalStr} d\n`);
+        addStr(`  ${qtyStr}  -> ${totalStr} d\n`);
       } else {
-        addStr(`${name.toUpperCase()}  SL: ${qtyStr}  -> ${totalStr} d\n`);
+        addStr(`${name.toUpperCase()}   ${qtyStr}   -> ${totalStr} d\n`);
       }
 
       addBytes(0x1d, 0x21, 0x00); // Reset Font Size
@@ -392,7 +384,6 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     addBytes(0x1b, 0x61, 0x01);
     addStr('-'.repeat(maxChars) + '\n');
     addStr('CAM ON VA HEN GAP LAI QUY KHACH!\n');
-    addStr('Rongta RP335UL - CHA CHI BAP POS\n');
 
     // Feed lines & Auto Cut command for Rongta RP335UL (GS V 66 3 / GS V 1)
     addBytes(0x1d, 0x56, 0x42, 0x03);
