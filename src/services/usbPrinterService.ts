@@ -365,9 +365,8 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     }
 
     addBytes(0x1b, 0x45, 0x01); // Bold ON
-    addBytes(0x1d, 0x21, 0x01); // Double height
-    addStr(`TONG CONG: ${order.grandTotal.toLocaleString('vi-VN')} d\n`);
-    addBytes(0x1d, 0x21, 0x00);
+    addBytes(0x1d, 0x21, 0x00); // Standard font size 12
+    addStr(`Tong cong: ${order.grandTotal.toLocaleString('vi-VN')} d\n`);
     addBytes(0x1b, 0x45, 0x00); // Bold OFF
 
     // Center align footer
