@@ -338,13 +338,14 @@ export const SettingsHardware: React.FC<SettingsHardwareProps> = ({
                       Kích thước font chữ in hóa đơn
                     </label>
                     <select
-                      value={formData.printerFontSize || 'large'}
+                      value={formData.printerFontSize || 'size13'}
                       onChange={(e) => setFormData({ ...formData, printerFontSize: e.target.value as any })}
                       className="w-full p-2.5 rounded-xl border border-[#E0E0D6] font-bold text-[#1A1A1A] bg-[#FAF9F6]"
                     >
-                      <option value="normal">Chuẩn (Normal - 100%)</option>
-                      <option value="large">Chữ Lớn (Large - 120% - Khuyên Dùng)</option>
-                      <option value="xlarge">Chữ Rất Lớn (X-Large - 140%)</option>
+                      <option value="size13">Size 13 (13px - Chuẩn Vừa Vặn - Mặc Định)</option>
+                      <option value="normal">Chuẩn 12px (Normal - 100%)</option>
+                      <option value="large">Chữ Lớn 14px (Large - 120%)</option>
+                      <option value="xlarge">Chữ Rất Lớn 16px (X-Large - 140%)</option>
                     </select>
                   </div>
 
