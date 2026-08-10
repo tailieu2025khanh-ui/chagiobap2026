@@ -46,7 +46,7 @@
   }
 
   /* Reset all modal containers and overlays so they don't wrap or constrain print pages */
-  div.fixed, div.inset-0, div.backdrop-blur-xs, div.max-h-\[92vh\], div.overflow-y-auto, div.flex-1 {
+  div.fixed, div.inset-0, div.overflow-y-auto, div.flex-1 {
     position: static !important;
     inset: auto !important;
     background: #ffffff !important;
