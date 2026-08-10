@@ -106,18 +106,42 @@ export default function App() {
   const [tables, setTables] = useLocalStorage<Table[]>('fnb_tables', INITIAL_TABLES);
   const [orders, setOrders] = useLocalStorage<Order[]>('fnb_orders', INITIAL_PAST_ORDERS);
   const [cumulativeRevenue, setCumulativeRevenue] = useLocalStorage<number>('fnb_cumulative_total_revenue', 0);
+  const [dailyRevenueMap, setDailyRevenueMap] = useLocalStorage<Record<string, number>>(
+    'fnb_daily_revenue_history',
+    {}
+  );
   const [shift, setShift] = useLocalStorage<Shift>('fnb_shift', INITIAL_SHIFT);
   const [staffList, setStaffList] = useLocalStorage<StaffMember[]>('fnb_staff_list', INITIAL_STAFF);
 
-  // Auto-sync cumulativeRevenue from paid orders if zero
+  // Auto-sync cumulativeRevenue & dailyRevenueMap from paid orders
   useEffect(() => {
-    if (cumulativeRevenue === 0 && orders && orders.length > 0) {
-      const initialPaidSum = orders
-        .filter((o) => o.paymentStatus === 'paid')
-        .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
-      if (initialPaidSum > 0) {
-        setCumulativeRevenue(initialPaidSum);
+    if (orders && orders.length > 0) {
+      if (cumulativeRevenue === 0) {
+        const initialPaidSum = orders
+          .filter((o) => o.paymentStatus === 'paid')
+          .reduce((sum, o) => sum + (o.grandTotal || 0), 0);
+        if (initialPaidSum > 0) {
+          setCumulativeRevenue(initialPaidSum);
+        }
       }
+
+      setDailyRevenueMap((prevMap) => {
+        const updatedMap = { ...(prevMap || {}) };
+        let hasChanges = false;
+        orders.forEach((o) => {
+          if (o.paymentStatus === 'paid' && o.createdAt) {
+            const dateStr = o.createdAt.split('T')[0];
+            if (!updatedMap[dateStr]) {
+              const daySum = orders
+                .filter((ord) => ord.paymentStatus === 'paid' && ord.createdAt?.split('T')[0] === dateStr)
+                .reduce((sum, ord) => sum + (ord.grandTotal || 0), 0);
+              updatedMap[dateStr] = daySum;
+              hasChanges = true;
+            }
+          }
+        });
+        return hasChanges ? updatedMap : prevMap;
+      });
     }
   }, [orders]);
 
@@ -418,9 +442,14 @@ export default function App() {
       );
     }
 
-    // Update Shift Revenue & Persistent Cumulative Revenue (Bảo toàn vĩnh viễn khi tắt app/máy)
+    // Update Shift Revenue & Persistent Cumulative/Daily Revenue (Bảo toàn vĩnh viễn trong ngày khi tắt app/máy)
     const rev = completedOrder.grandTotal;
+    const todayKey = new Date().toISOString().split('T')[0];
     setCumulativeRevenue((prev) => (prev || 0) + rev);
+    setDailyRevenueMap((prev) => ({
+      ...(prev || {}),
+      [todayKey]: ((prev || {})[todayKey] || 0) + rev,
+    }));
     setShift((prev) => ({
       ...prev,
       totalRevenue: prev.totalRevenue + rev,
@@ -533,6 +562,8 @@ export default function App() {
             menuItems={menuItems}
             cumulativeRevenue={cumulativeRevenue}
             setCumulativeRevenue={setCumulativeRevenue}
+            dailyRevenueMap={dailyRevenueMap}
+            setDailyRevenueMap={setDailyRevenueMap}
           />
         )}
 
