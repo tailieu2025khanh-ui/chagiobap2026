@@ -15,7 +15,7 @@ export const DEFAULT_STORE_CONFIG: StoreConfig = {
   printerIp: "192.168.1.200",
   printerPort: 9100,
   paperSize: "80mm",
-  printerFontSize: "large",
+  printerFontSize: "size13",
   printCopies: 2,
   autoPrintReceipt: true,
   printKitchenReceipt: true,
