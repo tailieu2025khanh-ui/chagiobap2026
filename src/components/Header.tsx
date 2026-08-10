@@ -14,9 +14,11 @@ import {
   FileSpreadsheet,
   Gamepad2,
   Key,
+  Users,
+  FileText,
 } from 'lucide-react';
 
-export type ViewTab = 'pos' | 'tables' | 'kds' | 'reports' | 'menu' | 'shift' | 'settings';
+export type ViewTab = 'pos' | 'tables' | 'kds' | 'reports' | 'menu' | 'shift' | 'staff' | 'settings';
 
 interface HeaderProps {
   activeTab: ViewTab;
@@ -24,6 +26,7 @@ interface HeaderProps {
   shift: Shift;
   storeConfig: StoreConfig;
   kitchenPendingCount: number;
+  onOpenTodayOrdersModal?: () => void;
   onOpenGoogleSheetsModal?: () => void;
   onOpenStaffQuizModal?: () => void;
   onOpenApiKeyModal?: () => void;
@@ -145,6 +148,18 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
+            onClick={() => setActiveTab('staff')}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+              activeTab === 'staff'
+                ? 'bg-[#5A5A40] text-white shadow-xs'
+                : 'text-[#808070] hover:text-[#1A1A1A] hover:bg-[#E0E0D6]/50'
+            }`}
+          >
+            <Users className="w-4 h-4" />
+            <span>Nhân Viên</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('settings')}
             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
               activeTab === 'settings'
@@ -159,6 +174,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Right Info Chip */}
         <div className="flex items-center gap-2.5">
+          {onOpenTodayOrdersModal && (
+            <button
+              onClick={onOpenTodayOrdersModal}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 rounded-xl text-xs font-bold transition-all shadow-2xs"
+              title="Xem và in lại hóa đơn bán hàng trong ngày"
+            >
+              <FileText className="w-4 h-4 text-amber-700 shrink-0" />
+              <span className="hidden md:inline">Bill Hôm Nay</span>
+            </button>
+          )}
           {onOpenApiKeyModal && (
             <button
               onClick={onOpenApiKeyModal}
