@@ -2,10 +2,10 @@ import { MenuItem, ModifierGroup, Table, StoreConfig, Order, Shift } from '../ty
 
 export const DEFAULT_STORE_CONFIG: StoreConfig = {
   storeName: "CHẢ GIÒ BẮP QUẢNG NGÃI",
-  address: "128 Nguyễn Trãi, Phường Bến Thành, Quận 1, TP.HCM",
-  phone: "0908 123 456",
-  wifiName: "ChaGioBap_Guest",
-  wifiPass: "88888888",
+  address: "87, Hùng Vương, Phường Bà Rịa, TP HCM",
+  phone: "0972371722",
+  wifiName: "khanh vi",
+  wifiPass: "0914683351",
   taxCode: "0312345678",
   bankName: "MBBank",
   bankAccount: "999908123456",
