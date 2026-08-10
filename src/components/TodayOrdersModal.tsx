@@ -34,7 +34,7 @@ export const TodayOrdersModal: React.FC<TodayOrdersModalProps> = ({
     (o) =>
       o.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (o.tableName && o.tableName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      o.items.some((i) => i.menuItem?.name.toLowerCase().includes(searchQuery.toLowerCase()))
+      o.items.some((i) => (i.menuItem?.name || '').toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const todayTotalRevenue = todayOrders
@@ -79,7 +79,7 @@ export const TodayOrdersModal: React.FC<TodayOrdersModalProps> = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Tìm mã hóa đơn, tên bàn hoặc món ăn..."
-                  className="w-full text-xs font-medium pl-9 pr-3 py-2 rounded-xl border border-[#E0E0D6] focus:outline-hidden focus:border-[#5A5A40] bg-[#FAF9F6]"
+                  className="w-full text-xs font-medium pl-9 pr-3 py-2 rounded-xl border border-[#E0E0D6] focus:outline-none focus:border-[#5A5A40] bg-[#FAF9F6]"
                 />
               </div>
             </div>
