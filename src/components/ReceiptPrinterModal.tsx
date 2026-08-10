@@ -208,10 +208,9 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                 {/* Items Table */}
                 <table className="w-full text-left mb-3 border-b border-dashed border-[#808070] pb-2">
                   <thead>
-                    <tr className="border-b border-[#808070] text-[11px]">
+                    <tr className="border-b border-[#808070] text-xs font-bold">
                       <th className="py-1">Món</th>
                       <th className="py-1 text-center">SL</th>
-                      <th className="py-1 text-right">Đ.Giá</th>
                       <th className="py-1 text-right">T.Tiền</th>
                     </tr>
                   </thead>
@@ -219,7 +218,13 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                     {order.items.map((item, idx) => (
                       <tr key={idx} className="align-top border-b border-stone-200">
                         <td className="py-2 pr-1">
-                          <div className="font-extrabold text-sm sm:text-base text-black uppercase leading-tight">
+                          <div className={`font-extrabold text-black uppercase leading-tight ${
+                            storeConfig.printerFontSize === 'xlarge'
+                              ? 'text-base sm:text-lg'
+                              : storeConfig.printerFontSize === 'normal'
+                              ? 'text-xs'
+                              : 'text-sm sm:text-base'
+                          }`}>
                             {item.menuItem?.name || 'Món ăn'}
                           </div>
                           {item.selectedModifiers && item.selectedModifiers.length > 0 && (
@@ -233,13 +238,22 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                             </div>
                           )}
                         </td>
-                        <td className="py-2 px-1 text-center font-extrabold text-sm sm:text-base text-black">
+                        <td className={`py-2 px-1 text-center font-extrabold text-black ${
+                          storeConfig.printerFontSize === 'xlarge'
+                            ? 'text-base sm:text-lg'
+                            : storeConfig.printerFontSize === 'normal'
+                            ? 'text-xs'
+                            : 'text-sm sm:text-base'
+                        }`}>
                           {item.quantity}
                         </td>
-                        <td className="py-2 px-1 text-right text-xs text-[#666]">
-                          {item.unitPrice.toLocaleString('vi-VN')}
-                        </td>
-                        <td className="py-2 pl-1 text-right font-extrabold text-sm text-black">
+                        <td className={`py-2 pl-1 text-right font-extrabold text-black ${
+                          storeConfig.printerFontSize === 'xlarge'
+                            ? 'text-base sm:text-lg'
+                            : storeConfig.printerFontSize === 'normal'
+                            ? 'text-xs'
+                            : 'text-sm sm:text-base'
+                        }`}>
                           {item.totalPrice.toLocaleString('vi-VN')}
                         </td>
                       </tr>
