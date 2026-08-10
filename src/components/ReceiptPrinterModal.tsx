@@ -164,7 +164,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
             className={`bg-[#FAF9F6] text-[#1A1A1A] p-5 shadow-sm font-mono text-xs rounded-sm border border-[#E0E0D6] relative space-y-6 ${
               is58mm ? 'w-[280px]' : 'w-[340px]'
             }`}
-            style={{ fontFamily: "'Times New Roman', Times, serif" }}
+            style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
           >
             {Array.from({ length: printCopies }).map((_, copyIdx) => (
               <div key={copyIdx} className={`receipt-copy ${copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}`}>
@@ -198,7 +198,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                 </div>
 
                 {/* Items Bordered Grid Table (Exact Match to User Screenshot) */}
-                <table className="w-full text-left mb-4 border-collapse border-2 border-black text-xs font-serif">
+                <table className="w-full text-left mb-4 border-collapse border-2 border-black text-xs font-sans">
                   <thead>
                     <tr className="bg-stone-100 border-b-2 border-black font-black text-black">
                       <th className="py-2 px-2.5 border-r-2 border-black font-black text-black">Tên món</th>
