@@ -115,10 +115,11 @@ export interface StoreConfig {
   bankAccount: string;
   accountHolder: string;
   qrTemplate: string;
-  printerType: 'usb' | 'lan' | 'bluetooth';
+  printerType: 'usb' | 'lan' | 'bluetooth' | 'sunmi';
   printerIp: string;
   printerPort: number;
   paperSize: '80mm' | '58mm';
+  printerFontSize?: 'normal' | 'large' | 'xlarge';
   printCopies: number; // 1, 2, or 3
   autoPrintReceipt: boolean;
   printKitchenReceipt: boolean;
