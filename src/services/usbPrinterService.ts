@@ -312,58 +312,48 @@ export const buildEscPosBuffer = (order: Order, storeConfig: StoreConfig, copies
     // ESC a 0 Left Alignment
     addBytes(0x1b, 0x61, 0x00);
 
-    // Table items header (No D.Gia unit price column)
+    // Bordered Grid Table Header & Structure (Exact Match to User Excel Screenshot)
+    const nameColWidth = is58mm ? 16 : 26;
+    const qtyColWidth = is58mm ? 4 : 5;
+    const priceColWidth = is58mm ? 9 : 12;
+
+    const borderLine = `+${'-'.repeat(nameColWidth)}+${'-'.repeat(qtyColWidth)}+${'-'.repeat(priceColWidth)}+\n`;
+
     addBytes(0x1b, 0x45, 0x01); // Bold ON
-    if (is58mm) {
-      addStr('Ten Mon          SL    T.Tien\n');
-    } else {
-      addStr('Ten Mon                  SL        T.Tien\n');
-    }
-    addBytes(0x1b, 0x45, 0x00); // Bold OFF
-    addStr('-'.repeat(maxChars) + '\n');
+    addStr(borderLine);
+    addStr(
+      `|${'Ten mon'.padEnd(nameColWidth, ' ')}|${'SL'.padStart(Math.floor((qtyColWidth + 2) / 2)).padEnd(qtyColWidth, ' ')}|${'T.Tien'.padStart(priceColWidth - 1).padEnd(priceColWidth, ' ')}|\n`
+    );
+    addStr(borderLine);
 
-    // Font size configuration based on user printerFontSize setting
-    const fontSizeByte =
-      storeConfig.printerFontSize === 'xlarge'
-        ? 0x11 // Double Height & Width
-        : storeConfig.printerFontSize === 'large'
-        ? 0x01 // Double Height
-        : 0x00; // Size 13 (Standard Crisp 13px Thermal Font)
-
-    // Items - Dish Name & Quantity in Bold Font
     for (const item of order.items) {
-      const name = removeVietnameseTones(item.menuItem?.name || 'Mon ăn');
+      const name = removeVietnameseTones(item.menuItem?.name || 'Mon an');
       const qtyStr = `${item.quantity}`;
-      const totalStr = item.totalPrice.toLocaleString('vi-VN');
+      const totalStr = `${item.totalPrice.toLocaleString('vi-VN')} d`;
 
-      addBytes(0x1b, 0x45, 0x01); // Bold ON
-      if (fontSizeByte > 0) {
-        addBytes(0x1d, 0x21, fontSizeByte); // Dynamic Font Size
-      }
+      const displayName = name.length > nameColWidth ? name.substring(0, nameColWidth - 1) + '.' : name;
 
-      if (is58mm) {
-        addStr(`${name.toUpperCase()}\n`);
-        addStr(`  ${qtyStr}  -> ${totalStr} d\n`);
-      } else {
-        addStr(`${name.toUpperCase()}   ${qtyStr}   -> ${totalStr} d\n`);
-      }
+      addStr(
+        `|${displayName.padEnd(nameColWidth, ' ')}|${qtyStr.padStart(Math.floor((qtyColWidth + qtyStr.length) / 2)).padEnd(qtyColWidth, ' ')}|${totalStr.padStart(priceColWidth - 1).padEnd(priceColWidth, ' ')}|\n`
+      );
+      addStr(borderLine);
 
-      addBytes(0x1d, 0x21, 0x00); // Reset Font Size
-      addBytes(0x1b, 0x45, 0x00); // Reset Bold
-
-      // Modifiers
-      if (item.selectedModifiers) {
+      // Modifiers & Notes inside box
+      if (item.selectedModifiers && item.selectedModifiers.length > 0) {
         for (const mod of item.selectedModifiers) {
           const modName = removeVietnameseTones(mod.optionName);
-          addStr(`   + ${modName}\n`);
+          const truncatedMod = (`+ ${modName}`).substring(0, nameColWidth);
+          addStr(`|${truncatedMod.padEnd(nameColWidth, ' ')}|${' '.repeat(qtyColWidth)}|${' '.repeat(priceColWidth)}|\n`);
+          addStr(borderLine);
         }
       }
       if (item.itemNote) {
-        addStr(`   * Ghi chu: ${removeVietnameseTones(item.itemNote)}\n`);
+        const noteName = `* ${removeVietnameseTones(item.itemNote)}`.substring(0, nameColWidth);
+        addStr(`|${noteName.padEnd(nameColWidth, ' ')}|${' '.repeat(qtyColWidth)}|${' '.repeat(priceColWidth)}|\n`);
+        addStr(borderLine);
       }
     }
-
-    addStr('-'.repeat(maxChars) + '\n');
+    addBytes(0x1b, 0x45, 0x00); // Bold OFF
 
     // Totals
     addBytes(0x1b, 0x61, 0x02); // Right align
