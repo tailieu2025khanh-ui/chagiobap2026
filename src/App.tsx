@@ -541,7 +541,7 @@ export default function App() {
       {/* ESC/POS Thermal Receipt Printer Modal */}
       {(printingOrder || lastPrintedOrder) && (
         <ReceiptPrinterModal
-          order={printingOrder || lastPrintedOrder}
+          order={(printingOrder || lastPrintedOrder)!}
           storeConfig={storeConfig}
           isOpen={!!printingOrder}
           onClose={() => setPrintingOrder(null)}
