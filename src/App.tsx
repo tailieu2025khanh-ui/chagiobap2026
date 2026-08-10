@@ -36,22 +36,26 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { printOrderUsb, initUsbAutoDetect } from './services/usbPrinterService';
 
 export default function App() {
-  // Persistence Helper with Quota Protection
+  // Persistence Helper with Quota Protection & Dual Permanent Backup
   const saveToLocalStorageSafe = <T,>(key: string, value: T) => {
     try {
       window.localStorage.setItem(key, JSON.stringify(value));
+      if (key === 'fnb_orders') {
+        window.localStorage.setItem('fnb_orders_permanent_backup', JSON.stringify(value));
+      }
     } catch (err) {
       console.warn(`[LocalStorage] Direct save failed for ${key}, stripping image payload...`, err);
       try {
         if (key === 'fnb_orders' && Array.isArray(value)) {
           const sanitizedOrders = value.map((ord: Order) => ({
             ...ord,
-            items: ord.items.map((it) => ({
+            items: (ord.items || []).map((it) => ({
               ...it,
               menuItem: it.menuItem ? { ...it.menuItem, image: '' } : it.menuItem,
             })),
           }));
           window.localStorage.setItem(key, JSON.stringify(sanitizedOrders));
+          window.localStorage.setItem('fnb_orders_permanent_backup', JSON.stringify(sanitizedOrders));
         }
       } catch (fallbackErr) {
         console.error(`[LocalStorage] Fallback save failed for ${key}`, fallbackErr);
@@ -63,7 +67,25 @@ export default function App() {
     const [storedValue, setStoredValue] = useState<T>(() => {
       try {
         const item = window.localStorage.getItem(key);
-        return item ? JSON.parse(item) : initialValue;
+        if (item) {
+          const parsed = JSON.parse(item);
+          if (key === 'fnb_orders' && Array.isArray(parsed)) {
+            const backupItem = window.localStorage.getItem('fnb_orders_permanent_backup');
+            if (backupItem) {
+              const backupParsed = JSON.parse(backupItem);
+              if (Array.isArray(backupParsed) && backupParsed.length > parsed.length) {
+                return backupParsed as unknown as T;
+              }
+            }
+          }
+          return parsed;
+        } else if (key === 'fnb_orders') {
+          const backupItem = window.localStorage.getItem('fnb_orders_permanent_backup');
+          if (backupItem) {
+            return JSON.parse(backupItem) as unknown as T;
+          }
+        }
+        return initialValue;
       } catch (error) {
         return initialValue;
       }
