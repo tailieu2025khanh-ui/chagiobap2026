@@ -24,8 +24,8 @@ export function getAIItemRecommendations(
   }
 
   const recommendations: AIRecommendation[] = [];
-  const cartCategories = cartItems.map((ci) => ci.menuItem.category);
-  const cartItemIds = new Set(cartItems.map((ci) => ci.menuItem.id));
+  const cartCategories = cartItems.map((ci) => ci.menuItem?.category).filter(Boolean);
+  const cartItemIds = new Set(cartItems.map((ci) => ci.menuItem?.id).filter(Boolean));
 
   const hasFood = cartCategories.includes('mon-an');
   const hasDrink = cartCategories.includes('nuoc-uong');
