@@ -25,6 +25,7 @@ export interface MenuItem {
   isAvailable: boolean;
   isBestSeller?: boolean;
   description?: string;
+  orderIndex?: number;
   modifierGroupIds?: string[]; // IDs of modifier groups applicable
 }
 
