@@ -42,7 +42,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         setTimeout(() => onClose(), 1500);
         return;
       }
-    } catch (err: any) {
+    } catch (err) {
       console.warn('Lỗi in USB trực tiếp:', err);
       setUsbStatusMsg('Vui lòng kiểm tra cáp kết nối USB máy in Rongta RP335UL / Sunmi D2.');
     }
@@ -57,7 +57,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
         setUsbPrinterName(name);
         setUsbStatusMsg(`Đã chọn máy in USB: ${name}`);
       }
-    } catch (err: any) {
+    } catch (err) {
       setUsbStatusMsg(`Đã tự động kết nối qua Driver USB hệ thống (Windows/Sunmi D2).`);
     } finally {
       setIsConnectingUsb(false);
@@ -163,108 +163,92 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
           {/* Paper Bill Simulation */}
           <div
             id="printable-receipt"
-            className={`bg-[#FAF9F6] text-[#1A1A1A] p-5 shadow-sm font-mono text-xs rounded-sm border border-[#E0E0D6] relative space-y-6 ${
+            className={`bg-[#FAF9F6] text-[#1A1A1A] p-5 shadow-sm font-sans text-xs rounded-sm border border-[#E0E0D6] relative space-y-5 ${
               is58mm ? 'w-[280px]' : 'w-[340px]'
             }`}
-            style={{ fontFamily: "Arial, Helvetica, sans-serif" }}
+            style={{ fontFamily: 'Arial, Helvetica, "Segoe UI", Roboto, sans-serif' }}
           >
             {Array.from({ length: printCopies }).map((_, copyIdx) => (
               <div key={copyIdx} className={`receipt-copy ${copyIdx > 0 ? 'pt-6 border-t-2 border-dashed border-[#808070]' : ''}`}>
                 {/* Header / Store Info */}
-                <div className="text-center space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
-                  <h2 className="font-bold text-sm tracking-wider uppercase">
+                <div className="space-y-1 mb-3 border-b border-dashed border-[#808070] pb-3 text-xs leading-normal">
+                  <h2 className="font-extrabold text-sm uppercase text-[#1A1A1A]">
                     {storeConfig.storeName}
                   </h2>
-                  <p className="text-[11px] leading-tight text-[#808070]">{storeConfig.address}</p>
-                  <p className="text-[11px] font-bold text-black">SĐT: {storeConfig.phone}</p>
-                  <p className="text-[11px] font-bold text-black">Wifi: {storeConfig.wifiName} | Mật khẩu: {storeConfig.wifiPass}</p>
+                  <p>Chi nhánh: Chi nhánh trung tâm</p>
+                  <p>Điện thoại: {storeConfig.phone}</p>
                 </div>
 
-                {/* Bill Title & Meta */}
-                <div className="text-center mb-3">
-                  <h3 className="font-bold text-base uppercase">HÓA ĐƠN THANH TOÁN</h3>
-                  <p className="font-bold text-xs mt-0.5">Mã HD: {order.id}</p>
-                </div>
-
-                <div className="text-[11px] space-y-1 mb-3 border-b border-dashed border-[#808070] pb-2">
-                  <div className="flex justify-between">
-                    <span>Ngày tạo:</span>
-                    <span>{new Date(order.createdAt).toLocaleString('vi-VN')}</span>
+                {/* Sales Order Meta Info */}
+                <div className="text-xs space-y-1 mb-3 border-b border-dashed border-[#808070] pb-2">
+                  <p>Ngày bán: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
+                  <div className="text-center my-2.5">
+                    <h3 className="font-black text-base uppercase text-[#1A1A1A]">HOÁ ĐƠN BÁN HÀNG</h3>
+                    <p className="font-bold text-xs">{order.id}</p>
                   </div>
-                  {order.tableName && (
-                    <div className="flex justify-between font-bold text-black">
-                      <span>Vị trí / Bàn:</span>
-                      <span>{order.tableName}</span>
-                    </div>
-                  )}
+                  <p>Khách hàng: Khách lẻ</p>
+                  <p>Địa chỉ: {storeConfig.address}</p>
+                  <p>SĐT: {storeConfig.phone}</p>
+                  <p>Wifi: {storeConfig.wifiName} | Pass: {storeConfig.wifiPass}</p>
+                  <p className="font-bold text-[#1A1A1A] pt-1">Người bán: {order.cashierName || 'CHẢ GIÒ BẮP'}</p>
                 </div>
 
-                {/* Items Bordered Grid Table (Exact Match to User Screenshot) */}
-                <table className="w-full text-left mb-4 border-collapse border-2 border-black text-xs font-sans">
-                  <thead>
-                    <tr className="bg-stone-100 border-b-2 border-black font-black text-black">
-                      <th className="py-2 px-2.5 border-r-2 border-black font-black text-black">Tên món</th>
-                      <th className="py-2 px-1 border-r-2 border-black text-center font-black text-black w-14">SL</th>
-                      <th className="py-2 px-2 border-black text-right font-black text-black w-28">T.Tiền</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(order.items || []).map((item, idx) => {
-                      const itemFontSizeClass =
-                        storeConfig.printerFontSize === 'xlarge'
-                          ? 'text-base sm:text-lg'
-                          : storeConfig.printerFontSize === 'large'
-                          ? 'text-sm sm:text-base'
-                          : storeConfig.printerFontSize === 'normal'
-                          ? 'text-xs'
-                          : 'text-[13px]';
+                {/* Items Table Structure matching Receipt Image */}
+                <div className="mb-3 border-b border-dashed border-[#808070] pb-2">
+                  <div className="flex justify-between font-bold text-xs border-b border-dashed border-[#808070] pb-1.5 mb-2">
+                    <span className="w-1/2">Đơn giá</span>
+                    <span className="w-1/6 text-center">SL</span>
+                    <span className="w-1/3 text-right">Thành tiền</span>
+                  </div>
 
-                      return (
-                        <tr key={idx} className="border-b border-black">
-                          <td className="py-2 px-2.5 border-r border-black font-bold text-black uppercase leading-snug">
-                            {item.menuItem?.name || 'Món ăn'}
-                            {item.selectedModifiers && item.selectedModifiers.length > 0 && (
-                              <div className="text-[10px] text-[#444] pl-1 font-medium mt-0.5 normal-case">
-                                {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
-                              </div>
-                            )}
-                            {item.itemNote && (
-                              <div className="text-[10px] text-amber-900 italic pl-1 mt-0.5 normal-case">
-                                * {item.itemNote}
-                              </div>
-                            )}
-                          </td>
-                          <td className={`py-2 px-1 border-r border-black text-center font-extrabold text-black ${itemFontSizeClass}`}>
-                            {item.quantity}
-                          </td>
-                          <td className={`py-2 px-2 text-right font-extrabold text-black whitespace-nowrap ${itemFontSizeClass}`}>
-                            {(item.totalPrice || 0).toLocaleString('vi-VN')} đ
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                  <div className="space-y-2 text-xs font-sans">
+                    {(order.items || []).map((item, idx) => (
+                      <div key={idx} className="border-b border-dashed border-stone-200 pb-1.5">
+                        <p className="font-bold text-[#1A1A1A] text-xs uppercase">{item.menuItem?.name || 'Món ăn'}</p>
+                        <div className="flex justify-between items-center text-xs mt-0.5 font-bold">
+                          <span className="w-1/2">{(item.unitPrice || 0).toLocaleString('vi-VN')}</span>
+                          <span className="w-1/6 text-center">{item.quantity}</span>
+                          <span className="w-1/3 text-right">{(item.totalPrice || 0).toLocaleString('vi-VN')}</span>
+                        </div>
+                        {item.selectedModifiers && item.selectedModifiers.length > 0 && (
+                          <div className="text-[10px] text-stone-600 pl-1 font-normal">
+                            {item.selectedModifiers.map((m) => `+ ${m.optionName}`).join(', ')}
+                          </div>
+                        )}
+                        {item.itemNote && (
+                          <div className="text-[10px] text-amber-900 italic pl-1 font-normal">
+                            * {item.itemNote}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
 
-                {/* Totals Summary */}
+                {/* Totals Summary matching photo */}
                 <div className="text-xs space-y-1 mb-4 border-b border-dashed border-[#808070] pb-3">
+                  <div className="flex justify-between font-bold text-xs">
+                    <span>Tổng tiền hàng:</span>
+                    <span>{(order.subtotal || order.grandTotal || 0).toLocaleString('vi-VN')}</span>
+                  </div>
+
                   {(order.discountPercent || 0) > 0 && (
-                    <div className="flex justify-between text-emerald-700 font-medium text-[11px]">
-                      <span>Giảm giá ({order.discountPercent}%):</span>
-                      <span>-{(order.discountAmount || 0).toLocaleString('vi-VN')} đ</span>
+                    <div className="flex justify-between text-emerald-700 font-bold text-xs">
+                      <span>Chiết khấu ({order.discountPercent}%):</span>
+                      <span>-{(order.discountAmount || 0).toLocaleString('vi-VN')}</span>
                     </div>
                   )}
 
                   {(order.vatPercent || 0) > 0 && (
-                    <div className="flex justify-between text-[#808070]">
+                    <div className="flex justify-between font-bold text-xs">
                       <span>Thuế VAT ({order.vatPercent}%):</span>
-                      <span>+{(order.vatAmount || 0).toLocaleString('vi-VN')} đ</span>
+                      <span>+{(order.vatAmount || 0).toLocaleString('vi-VN')}</span>
                     </div>
                   )}
 
-                  <div className="flex justify-between items-baseline text-[15px] font-extrabold pt-1.5 text-black border-t border-black mt-1">
-                    <span className="font-extrabold text-[15px]">Tổng cộng:</span>
-                    <span className="font-extrabold text-[15px]">{(order.grandTotal || 0).toLocaleString('vi-VN')} đ</span>
+                  <div className="flex justify-between items-baseline text-[15px] font-black pt-1.5 text-black border-t border-black mt-2">
+                    <span className="font-black text-[15px]">Tổng cộng:</span>
+                    <span className="font-black text-[15px]">{(order.grandTotal || 0).toLocaleString('vi-VN')}</span>
                   </div>
                 </div>
 
@@ -276,7 +260,7 @@ export const ReceiptPrinterModal: React.FC<ReceiptPrinterModalProps> = ({
                       <span className="text-[9px] text-[#808070] mt-1">Quét QR thanh toán VietQR</span>
                     </div>
                   )}
-                  <p className="font-bold text-[11px]">CẢM ƠN VÀ HẸN GẶP LẠI QUÝ KHÁCH!</p>
+                  <p className="font-bold text-[11px] uppercase">CẢM ƠN VÀ HẸN GẶP LẠI QUÝ KHÁCH!</p>
                 </div>
               </div>
             ))}
